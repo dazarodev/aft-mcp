@@ -274,10 +274,10 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Description: `impact` analyzes what breaks if a symbol is changed (e.g., add parameter, change return type). Reports direct callers needing update, indirect callers that may need update, and type impact.
 - Why it matters: Agents currently guess at impact or miss callers. Automated impact analysis prevents broken-but-not-caught changes.
 - Source: user
-- Primary owning slice: M003/S05
+- Primary owning slice: M003/S04
 - Supporting slices: none
 - Validation: unmapped
-- Notes: Includes suggestions for updating call sites (e.g., "add default argument").
+- Notes: Includes suggestions for updating call sites (e.g., "add default argument"). D079 merged trace_data and impact into single slice S04.
 
 ### R026 — Entry point detection heuristics
 - Class: core-capability
@@ -487,7 +487,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 | R022 | primary-user-loop | active | M003/S02 | none | unmapped |
 | R023 | differentiator | active | M003/S03 | none | unmapped |
 | R024 | differentiator | active | M003/S04 | none | unmapped |
-| R025 | differentiator | active | M003/S05 | none | unmapped |
+| R025 | differentiator | active | M003/S04 | none | unmapped |
 | R026 | core-capability | active | M003/S03 | none | unmapped |
 | R027 | quality-attribute | validated | M003/S01 | M001/S01 | S01 |
 | R028 | core-capability | active | M004/S01 | none | unmapped |
