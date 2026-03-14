@@ -55,7 +55,7 @@ This milestone is complete only when all are true:
 
 - [x] **S01: Move Symbol with Import Rewiring** `risk:high` `depends:[]`
   > After this: agent calls `aft_move_symbol` to move a function from one file to another — all import statements across the workspace are updated automatically, verified by integration tests with multi-file fixtures spanning 5+ files
-- [ ] **S02: Extract Function & Inline Symbol** `risk:medium` `depends:[]`
+- [x] **S02: Extract Function & Inline Symbol** `risk:medium` `depends:[]`
   > After this: agent calls `aft_extract_function` to extract a code range into a new function with auto-detected parameters and return type, and `aft_inline_symbol` to replace a function call with its body — both verified by integration tests across TS/JS/Python
 - [ ] **S03: LSP-Enhanced Symbol Resolution** `risk:low` `depends:[S01,S02]`
   > After this: when the plugin provides LSP workspace symbol data via lsp_hints, edit_symbol and the refactoring commands resolve ambiguous symbols with higher accuracy — verified by integration tests with mock lsp_hints data and plugin round-trip tests

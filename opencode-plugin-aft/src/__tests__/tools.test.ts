@@ -343,3 +343,125 @@ describe("move_symbol round-trip", () => {
     expect(consumerContent).not.toContain("./service");
   }, TEST_TIMEOUT_MS);
 });
+
+describe("extract_function round-trip", () => {
+  let bridge: BinaryBridge;
+  let tmpDir: string;
+
+  const TEST_TIMEOUT_MS = 15_000;
+
+  afterEach(async () => {
+    if (bridge) await bridge.shutdown();
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  test("aft_extract_function extracts code range into a new function with parameters", async () => {
+    bridge = new BinaryBridge(BINARY_PATH, PROJECT_CWD, {
+      timeoutMs: TEST_TIMEOUT_MS,
+    });
+
+    tmpDir = await mkdtemp(resolve(tmpdir(), "aft-extract-"));
+
+    const filePath = resolve(tmpDir, "source.ts");
+    await writeFile(
+      filePath,
+      [
+        'function processData(items: string[], prefix: string): string {',
+        '  const filtered = items.filter(item => item.length > 0);',
+        '  const mapped = filtered.map(item => prefix + item);',
+        '  const result = mapped.join(", ");',
+        '  return result;',
+        '}',
+        '',
+      ].join('\n'),
+    );
+
+    // Configure
+    const navTools = navigationTools(bridge);
+    const configResult = JSON.parse(
+      await navTools.aft_configure.execute({ project_root: tmpDir }),
+    );
+    expect(configResult.ok).toBe(true);
+
+    // Extract lines 1-3 (the filtering and mapping logic)
+    const refTools = refactoringTools(bridge);
+    const result = JSON.parse(
+      await refTools.aft_extract_function.execute({
+        file: filePath,
+        name: "filterAndMap",
+        start_line: 1,
+        end_line: 4,
+        dry_run: true,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.dry_run).toBe(true);
+    expect(Array.isArray(result.parameters)).toBe(true);
+    expect(result.parameters.length).toBeGreaterThan(0);
+    expect(result.return_type).toBeDefined();
+    expect(typeof result.diff).toBe("string");
+  }, TEST_TIMEOUT_MS);
+});
+
+describe("inline_symbol round-trip", () => {
+  let bridge: BinaryBridge;
+  let tmpDir: string;
+
+  const TEST_TIMEOUT_MS = 15_000;
+
+  afterEach(async () => {
+    if (bridge) await bridge.shutdown();
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  test("aft_inline_symbol inlines a function call and returns substitution info", async () => {
+    bridge = new BinaryBridge(BINARY_PATH, PROJECT_CWD, {
+      timeoutMs: TEST_TIMEOUT_MS,
+    });
+
+    tmpDir = await mkdtemp(resolve(tmpdir(), "aft-inline-"));
+
+    const filePath = resolve(tmpDir, "source.ts");
+    await writeFile(
+      filePath,
+      [
+        'function helper(a: number, b: number): number {',
+        '  return a + b;',
+        '}',
+        '',
+        'function main() {',
+        '  const result = helper(10, 20);',
+        '  console.log(result);',
+        '}',
+        '',
+      ].join('\n'),
+    );
+
+    // Configure
+    const navTools = navigationTools(bridge);
+    const configResult = JSON.parse(
+      await navTools.aft_configure.execute({ project_root: tmpDir }),
+    );
+    expect(configResult.ok).toBe(true);
+
+    // Inline helper at line 5 (const result = helper(10, 20))
+    const refTools = refactoringTools(bridge);
+    const result = JSON.parse(
+      await refTools.aft_inline_symbol.execute({
+        file: filePath,
+        symbol: "helper",
+        call_site_line: 5,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.symbol).toBe("helper");
+    expect(result.call_context).toBe("assignment");
+    expect(result.substitutions).toBeGreaterThan(0);
+
+    // Verify file was modified
+    const content = await readFile(filePath, "utf-8");
+    expect(content).not.toContain("helper(10, 20)");
+  }, TEST_TIMEOUT_MS);
+});

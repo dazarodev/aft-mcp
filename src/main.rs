@@ -86,6 +86,8 @@ fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
         "impact" => aft::commands::impact::handle_impact(&req, ctx),
         "trace_data" => aft::commands::trace_data::handle_trace_data(&req, ctx),
         "move_symbol" => aft::commands::move_symbol::handle_move_symbol(&req, ctx),
+        "extract_function" => aft::commands::extract_function::handle_extract_function(&req, ctx),
+        "inline_symbol" => aft::commands::inline_symbol::handle_inline_symbol(&req, ctx),
         // Test-only: populate the backup store through the protocol (no write/edit_symbol yet)
         "snapshot" => handle_snapshot(&req, ctx),
         _ => {

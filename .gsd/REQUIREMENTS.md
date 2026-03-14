@@ -314,25 +314,25 @@ Use it to track what is actively in scope, what has been validated by completed 
 
 ### R029 — Extract function
 - Class: core-capability
-- Status: active
+- Status: validated
 - Description: `extract_function` takes a line range, identifies free variables that become parameters, determines the return value, extracts the code into a new function, and replaces the original range with a call.
 - Why it matters: Extract is the most common refactoring operation. Automating parameter inference and return type detection eliminates the manual analysis step.
 - Source: user
 - Primary owning slice: M004/S02
 - Supporting slices: none
-- Validation: unmapped
-- Notes: Agent reviews and approves the extraction before it's applied.
+- Validation: S02 — 21 unit tests cover free variable classification (enclosing params, property access filtering, module-level, this/self detection), return value detection (explicit, post-range, void), function generation (TS/Python). 6 integration tests prove end-to-end through binary protocol (basic TS, return value, Python, dry-run, unsupported language, this-reference). Plugin round-trip verified by bun test (42 tests).
+- Notes: Limited to TS/JS/TSX and Python per D101. Agent reviews and approves the extraction before it's applied.
 
 ### R030 — Inline symbol
 - Class: core-capability
-- Status: active
+- Status: validated
 - Description: `inline_symbol` replaces a function call with the function's body, adjusting variable names and scope as needed. Inverse of extract.
 - Why it matters: Removes unnecessary indirection — one-line wrapper functions, trivial helpers that obscure the logic.
 - Source: user
 - Primary owning slice: M004/S02
 - Supporting slices: none
-- Validation: unmapped
-- Notes: Must handle scope conflicts when inlining (variable name collisions).
+- Validation: S02 — 17 unit tests cover parameter substitution (basic, whole-word, noop), single-return validation (single, void, expression body, multiple), scope conflict detection. 6 integration tests prove end-to-end through binary protocol (basic TS, expression body, Python, dry-run, multiple-returns, scope-conflict). Plugin round-trip verified by bun test (42 tests).
+- Notes: Must handle scope conflicts when inlining (variable name collisions). Limited to single-return functions per D102.
 
 ### R031 — LSP-aware architecture (provider interface)
 - Class: constraint
@@ -491,8 +491,8 @@ Use it to track what is actively in scope, what has been validated by completed 
 | R026 | core-capability | validated | M003/S03 | none | S03 |
 | R027 | quality-attribute | validated | M003/S01 | M001/S01 | S01 |
 | R028 | core-capability | validated | M004/S01 | none | S01 |
-| R029 | core-capability | active | M004/S02 | none | unmapped |
-| R030 | core-capability | active | M004/S02 | none | unmapped |
+| R029 | core-capability | validated | M004/S02 | none | S02 |
+| R030 | core-capability | validated | M004/S02 | none | S02 |
 | R031 | constraint | active | M001/S01 | M004/S03 | S01 (partial) |
 | R032 | constraint | validated | M001/S01 | none | S01 |
 | R033 | integration | active | M004/S03 | none | unmapped |
@@ -507,7 +507,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 
 ## Coverage Summary
 
-- Active requirements: 6
+- Active requirements: 4
 - Mapped to slices: 34
-- Validated: 29
+- Validated: 31
 - Unmapped active requirements: 0

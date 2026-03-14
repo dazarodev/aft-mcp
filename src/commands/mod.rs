@@ -11,6 +11,8 @@ pub mod configure;
 pub mod edit_history;
 pub mod edit_match;
 pub mod edit_symbol;
+pub mod extract_function;
+pub mod inline_symbol;
 pub mod list_checkpoints;
 pub mod organize_imports;
 pub mod outline;
