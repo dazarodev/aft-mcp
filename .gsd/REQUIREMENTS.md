@@ -19,13 +19,13 @@ Use it to track what is actively in scope, what has been validated by completed 
 
 ### R002 — Multi-language tree-sitter parsing
 - Class: core-capability
-- Status: active
+- Status: validated
 - Description: Tree-sitter grammars embedded for TypeScript, JavaScript, TSX/JSX, Python, Rust, and Go. Language auto-detected from file extension. Symbol extraction queries per language for functions, classes, methods, structs, interfaces, enums.
 - Why it matters: This is the foundation for every semantic operation — editing by symbol, outline, zoom, call graph all depend on accurate symbol extraction.
 - Source: user
 - Primary owning slice: M001/S02
 - Supporting slices: none
-- Validation: unmapped
+- Validation: S02 — 53 unit tests prove symbol extraction across all 6 languages with representative code patterns. All symbol kinds, scope chains, export detection, arrow functions, impl blocks, receiver methods, decorated functions verified.
 - Notes: Web-first priority — TS/JS/TSX share query patterns and ship first. Python next, then Rust and Go.
 
 ### R003 — Structural reading (outline + zoom)
@@ -466,7 +466,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 | ID | Class | Status | Primary owner | Supporting | Proof |
 |---|---|---|---|---|---|
 | R001 | core-capability | validated | M001/S01 | none | S01 |
-| R002 | core-capability | active | M001/S02 | none | unmapped |
+| R002 | core-capability | validated | M001/S02 | none | S02 |
 | R003 | primary-user-loop | active | M001/S03 | none | unmapped |
 | R004 | core-capability | active | M001/S05 | none | unmapped |
 | R005 | core-capability | active | M001/S05 | none | unmapped |
@@ -509,7 +509,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 
 ## Coverage Summary
 
-- Active requirements: 32
+- Active requirements: 31
 - Mapped to slices: 34
-- Validated: 2
+- Validated: 3
 - Unmapped active requirements: 0

@@ -12,7 +12,7 @@ One-call semantic file operations that eliminate mechanical token waste — agen
 
 ## Current State
 
-M001/S01 complete. The `aft` Rust binary runs as a persistent process with NDJSON protocol — accepts commands (ping, version, echo) on stdin, writes JSON responses to stdout, recovers from malformed input, shuts down cleanly on EOF. 17 tests pass (13 unit + 4 integration). LanguageProvider trait defined with stub implementation, ready for S02's tree-sitter backing.
+M001/S01 and S02 complete. The `aft` Rust binary runs as a persistent process with NDJSON protocol and now embeds tree-sitter grammars for 6 languages (TypeScript, JavaScript, TSX, Python, Rust, Go). `TreeSitterProvider` implements the `LanguageProvider` trait — `list_symbols()` extracts functions, classes, methods, structs, interfaces, enums, and type aliases with names, kinds, ranges, signatures, scope chains, and export status. 57 tests pass (53 unit + 4 integration). Parse tree caching with mtime invalidation is in place. Next: S03 (outline/zoom commands) or S04 (safety/recovery system).
 
 ## Architecture / Key Patterns
 

@@ -1,35 +1,11 @@
 use std::path::Path;
 
 use crate::error::AftError;
-
-/// Location range within a source file (line/column, 0-indexed).
-#[derive(Debug, Clone)]
-pub struct Range {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-/// A symbol discovered in a source file.
-#[derive(Debug, Clone)]
-pub struct Symbol {
-    pub name: String,
-    pub kind: String, // e.g. "function", "class", "variable"
-    pub range: Range,
-}
-
-/// A resolved symbol match — a `Symbol` plus the file it was found in.
-#[derive(Debug, Clone)]
-pub struct SymbolMatch {
-    pub symbol: Symbol,
-    pub file: String,
-}
+pub use crate::symbols::{Range, Symbol, SymbolMatch};
 
 /// Trait for language-specific symbol resolution.
 ///
-/// S02 implements this with tree-sitter parsing. S01 provides only the
-/// `StubProvider` placeholder.
+/// S02 implements this with tree-sitter parsing via `TreeSitterProvider`.
 pub trait LanguageProvider {
     /// Resolve a symbol by name within a file. Returns all matches.
     fn resolve_symbol(&self, file: &Path, name: &str) -> Result<Vec<SymbolMatch>, AftError>;
@@ -40,7 +16,7 @@ pub trait LanguageProvider {
 
 /// Placeholder provider that rejects all calls.
 ///
-/// Used until a real language backend (tree-sitter) is wired in during S02.
+/// Retained for tests and fallback. Production code uses `TreeSitterProvider`.
 pub struct StubProvider;
 
 impl LanguageProvider for StubProvider {

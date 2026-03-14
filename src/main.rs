@@ -1,9 +1,12 @@
 use std::io::{self, BufRead, BufWriter, Write};
 
+use aft::parser::TreeSitterProvider;
 use aft::protocol::{EchoParams, RawRequest, Response};
 
 fn main() {
     eprintln!("[aft] started, pid {}", std::process::id());
+
+    let _provider = TreeSitterProvider::new();
 
     let stdin = io::stdin();
     let reader = stdin.lock();

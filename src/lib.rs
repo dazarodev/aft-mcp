@@ -1,7 +1,9 @@
 pub mod config;
 pub mod error;
 pub mod language;
+pub mod parser;
 pub mod protocol;
+pub mod symbols;
 
 #[cfg(test)]
 mod tests {
