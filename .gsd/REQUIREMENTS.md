@@ -166,7 +166,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Description: Structural transforms that are idiomatic per language: add_derive (Rust), wrap_try_catch (TS/JS), add_decorator (Python), add_struct_tags (Go). Each modifies the AST structurally rather than string-matching.
 - Why it matters: These are the operations agents do most clumsily — adding a derive to an existing attribute list, wrapping a function body in try/catch without breaking indentation.
 - Source: user
-- Primary owning slice: M002/S03
+- Primary owning slice: M002/S02
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Hardcoded per language for now. Extensibility is deferred (R036).
@@ -177,10 +177,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Description: After every edit, detect and invoke the project's canonical formatter (prettier, rustfmt, black/ruff, gofmt) if available. Response indicates "applied" or "not_found". Agent never thinks about code style.
 - Why it matters: Inconsistent formatting creates noise in diffs and wastes agent attention on style.
 - Source: user
-- Primary owning slice: M002/S04
-- Supporting slices: none
-- Validation: unmapped
-- Notes: Detects formatter from project config (.prettierrc, rustfmt.toml, pyproject.toml, etc.). Falls back to defaults if no config.
+- Primary owning slice: M002/S03
 
 ### R017 — Full validation mode (opt-in type checkers)
 - Class: quality-attribute
@@ -188,7 +185,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Description: Opt-in `validate: "full"` mode invokes external type checkers (tsc, pyright, cargo check, go vet) after an edit. Returns type errors with line numbers and messages. Default remains syntax-only (fast).
 - Why it matters: Gives agents a one-stop validation option for critical edits — e.g., after multi-file transactions where confirming type safety matters.
 - Source: user
-- Primary owning slice: M002/S04
+- Primary owning slice: M002/S03
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Synchronous — command blocks until type checker returns. Acceptable because it's opt-in and the agent explicitly requested it.
@@ -199,7 +196,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Description: Every mutation command accepts `dry_run: true` and returns a diff preview without applying changes. Shows lines added/removed and syntax validity of the proposed change.
 - Why it matters: Lets agents preview destructive operations before committing. Essential for cautious multi-file refactors.
 - Source: user
-- Primary owning slice: M002/S05
+- Primary owning slice: M002/S04
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Dry-run diff format should be unified diff (parseable by agents).
@@ -210,7 +207,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Description: `transaction` applies edits to multiple files atomically — all succeed or all roll back. Each file's result is reported individually. If any file fails validation, all changes revert.
 - Why it matters: Multi-file refactors with partial failures leave the codebase in a broken state. Atomic transactions eliminate partial failure.
 - Source: user
-- Primary owning slice: M002/S05
+- Primary owning slice: M002/S04
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Builds on the per-file backup system from R007.
@@ -479,11 +476,11 @@ Use it to track what is actively in scope, what has been validated by completed 
 | R012 | launchability | validated | M001/S07 | none | S07 |
 | R013 | core-capability | validated | M002/S01 | none | S01 |
 | R014 | core-capability | active | M002/S02 | none | unmapped |
-| R015 | differentiator | active | M002/S03 | none | unmapped |
-| R016 | quality-attribute | active | M002/S04 | none | unmapped |
-| R017 | quality-attribute | active | M002/S04 | none | unmapped |
-| R018 | failure-visibility | active | M002/S05 | none | unmapped |
-| R019 | core-capability | active | M002/S05 | none | unmapped |
+| R015 | differentiator | active | M002/S02 | none | unmapped |
+| R016 | quality-attribute | active | M002/S03 | none | unmapped |
+| R017 | quality-attribute | active | M002/S03 | none | unmapped |
+| R018 | failure-visibility | active | M002/S04 | none | unmapped |
+| R019 | core-capability | active | M002/S04 | none | unmapped |
 | R020 | core-capability | active | M003/S01 | none | unmapped |
 | R021 | primary-user-loop | active | M003/S02 | none | unmapped |
 | R022 | primary-user-loop | active | M003/S02 | none | unmapped |
