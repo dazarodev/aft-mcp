@@ -749,3 +749,336 @@ fn callgraph_watcher_remove_caller() {
 
     aft.shutdown();
 }
+
+// ---------------------------------------------------------------------------
+// impact command
+// ---------------------------------------------------------------------------
+
+/// `impact` without prior `configure` returns not_configured error.
+#[test]
+fn callgraph_impact_not_configured() {
+    let mut aft = AftProcess::spawn();
+
+    let resp = aft.send(
+        r#"{"id":"1","command":"impact","file":"helpers.ts","symbol":"validate"}"#,
+    );
+
+    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["code"], "not_configured");
+
+    aft.shutdown();
+}
+
+/// `impact` on a nonexistent symbol returns symbol_not_found error.
+#[test]
+fn callgraph_impact_symbol_not_found() {
+    let mut aft = AftProcess::spawn();
+    let fixtures = fixture_path("callgraph");
+    let root = fixtures.display().to_string();
+
+    aft.send(&format!(
+        r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
+        root
+    ));
+
+    let resp = aft.send(&format!(
+        r#"{{"id":"2","command":"impact","file":"{}/helpers.ts","symbol":"nonexistent"}}"#,
+        root
+    ));
+
+    assert_eq!(resp["ok"], false, "unknown symbol should fail: {:?}", resp);
+    assert_eq!(resp["code"], "symbol_not_found");
+
+    aft.shutdown();
+}
+
+/// `impact` on validate (called from multiple files) returns enriched callers.
+///
+/// validate is called from:
+/// - utils.ts (processData)
+/// - test_helpers.ts (testValidation)
+/// Should return callers with signatures, entry point flags, and call expressions.
+#[test]
+fn callgraph_impact_multi_caller() {
+    let mut aft = AftProcess::spawn();
+    let fixtures = fixture_path("callgraph");
+    let root = fixtures.display().to_string();
+
+    aft.send(&format!(
+        r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
+        root
+    ));
+
+    let resp = aft.send(&format!(
+        r#"{{"id":"2","command":"impact","file":"{}/helpers.ts","symbol":"validate","depth":5}}"#,
+        root
+    ));
+
+    assert_eq!(resp["ok"], true, "impact should succeed: {:?}", resp);
+    assert_eq!(resp["symbol"], "validate");
+    assert!(resp["file"].as_str().unwrap().contains("helpers.ts"));
+
+    // Should have at least 2 affected callers (processData in utils.ts + testValidation in test_helpers.ts)
+    let total_affected = resp["total_affected"].as_u64().unwrap();
+    assert!(
+        total_affected >= 2,
+        "validate should have at least 2 affected callers, got {}",
+        total_affected
+    );
+
+    // Should have at least 2 affected files
+    let affected_files = resp["affected_files"].as_u64().unwrap();
+    assert!(
+        affected_files >= 2,
+        "validate should affect at least 2 files, got {}",
+        affected_files
+    );
+
+    // Callers array should exist and be non-empty
+    let callers = resp["callers"].as_array().expect("callers array");
+    assert!(
+        !callers.is_empty(),
+        "callers should not be empty"
+    );
+
+    // Each caller should have required fields
+    for caller in callers {
+        assert!(
+            caller.get("caller_symbol").is_some(),
+            "caller should have caller_symbol: {:?}",
+            caller
+        );
+        assert!(
+            caller.get("caller_file").is_some(),
+            "caller should have caller_file: {:?}",
+            caller
+        );
+        assert!(
+            caller.get("line").is_some(),
+            "caller should have line: {:?}",
+            caller
+        );
+        assert!(
+            caller.get("is_entry_point").is_some(),
+            "caller should have is_entry_point: {:?}",
+            caller
+        );
+        assert!(
+            caller.get("parameters").is_some(),
+            "caller should have parameters: {:?}",
+            caller
+        );
+    }
+
+    // At least one caller should have is_entry_point set
+    // (testValidation starts with "test", processData is called by main which is an entry point)
+    // With depth 5, we get transitive callers — main should be an entry point
+    let has_entry_point = callers
+        .iter()
+        .any(|c| c["is_entry_point"].as_bool() == Some(true));
+    assert!(
+        has_entry_point,
+        "at least one caller should be an entry point, callers: {:?}",
+        callers
+    );
+
+    // Target signature should be present
+    assert!(
+        resp.get("signature").is_some(),
+        "target should have a signature"
+    );
+
+    // Parameters should be present (validate takes `input: string`)
+    let params = resp["parameters"].as_array().expect("parameters array");
+    assert!(
+        params.iter().any(|p| p.as_str() == Some("input")),
+        "validate parameters should include 'input', got: {:?}",
+        params
+    );
+
+    aft.shutdown();
+}
+
+// ---------------------------------------------------------------------------
+// trace_data tests
+// ---------------------------------------------------------------------------
+
+/// `trace_data` without configure returns not_configured error.
+#[test]
+fn callgraph_trace_data_not_configured() {
+    let mut aft = AftProcess::spawn();
+
+    let resp = aft.send(
+        r#"{"id":"1","command":"trace_data","file":"data_flow.ts","symbol":"transformData","expression":"rawInput"}"#,
+    );
+
+    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["code"], "not_configured");
+
+    aft.shutdown();
+}
+
+/// `trace_data` on a nonexistent symbol returns symbol_not_found error.
+#[test]
+fn callgraph_trace_data_symbol_not_found() {
+    let mut aft = AftProcess::spawn();
+    let fixtures = fixture_path("callgraph");
+    let root = fixtures.display().to_string();
+
+    aft.send(&format!(
+        r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
+        root
+    ));
+
+    let resp = aft.send(&format!(
+        r#"{{"id":"2","command":"trace_data","file":"{}/data_flow.ts","symbol":"nonexistent","expression":"x"}}"#,
+        root
+    ));
+
+    assert_eq!(resp["ok"], false, "unknown symbol should fail: {:?}", resp);
+    assert_eq!(resp["code"], "symbol_not_found");
+
+    aft.shutdown();
+}
+
+/// `trace_data` tracks an expression through a local assignment within a function.
+///
+/// In data_flow.ts:
+///   export function transformData(rawInput: string): string {
+///       const cleaned = rawInput;   // assignment hop: rawInput → cleaned
+///       const result = processInput(cleaned);  // parameter hop: cleaned → input in processInput
+///       return result;
+///   }
+#[test]
+fn callgraph_trace_data_assignment_tracking() {
+    let mut aft = AftProcess::spawn();
+    let fixtures = fixture_path("callgraph");
+    let root = fixtures.display().to_string();
+
+    aft.send(&format!(
+        r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
+        root
+    ));
+
+    let resp = aft.send(&format!(
+        r#"{{"id":"2","command":"trace_data","file":"{}/data_flow.ts","symbol":"transformData","expression":"rawInput","depth":5}}"#,
+        root
+    ));
+
+    assert_eq!(resp["ok"], true, "trace_data should succeed: {:?}", resp);
+    assert_eq!(resp["expression"], "rawInput");
+    assert!(
+        resp["origin_file"].as_str().unwrap().contains("data_flow.ts"),
+        "origin_file should reference data_flow.ts"
+    );
+    assert_eq!(resp["origin_symbol"], "transformData");
+
+    let hops = resp["hops"].as_array().expect("hops array");
+    assert!(
+        !hops.is_empty(),
+        "should have at least one hop (assignment rawInput → cleaned)"
+    );
+
+    // First hop should be an assignment: rawInput → cleaned
+    let first = &hops[0];
+    assert_eq!(first["flow_type"], "assignment", "first hop should be assignment");
+    assert_eq!(first["variable"], "cleaned", "should track to 'cleaned'");
+    assert_eq!(first["approximate"], false, "direct assignment is not approximate");
+
+    aft.shutdown();
+}
+
+/// `trace_data` tracks across file boundaries via argument-to-parameter matching.
+///
+/// In data_flow.ts, `transformData` calls `processInput(cleaned)`.
+/// `processInput` is defined in data_processor.ts with parameter `input`.
+/// So the flow should be: rawInput → cleaned (assignment) → input (parameter in processInput).
+#[test]
+fn callgraph_trace_data_cross_file() {
+    let mut aft = AftProcess::spawn();
+    let fixtures = fixture_path("callgraph");
+    let root = fixtures.display().to_string();
+
+    aft.send(&format!(
+        r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
+        root
+    ));
+
+    let resp = aft.send(&format!(
+        r#"{{"id":"2","command":"trace_data","file":"{}/data_flow.ts","symbol":"transformData","expression":"rawInput","depth":5}}"#,
+        root
+    ));
+
+    assert_eq!(resp["ok"], true, "trace_data should succeed: {:?}", resp);
+
+    let hops = resp["hops"].as_array().expect("hops array");
+    assert!(
+        hops.len() >= 2,
+        "should have at least 2 hops (assignment + cross-file parameter), got {}: {:?}",
+        hops.len(),
+        hops
+    );
+
+    // Should have a parameter hop pointing to data_processor.ts
+    let has_param_hop = hops.iter().any(|h| {
+        h["flow_type"] == "parameter"
+            && h["file"].as_str().map(|f| f.contains("data_processor.ts")).unwrap_or(false)
+    });
+    assert!(
+        has_param_hop,
+        "should have a parameter hop into data_processor.ts, hops: {:?}",
+        hops
+    );
+
+    // Parameter hop should map to 'input' (processInput's first parameter)
+    let param_hop = hops.iter().find(|h| {
+        h["flow_type"] == "parameter"
+            && h["file"].as_str().map(|f| f.contains("data_processor.ts")).unwrap_or(false)
+    });
+    if let Some(ph) = param_hop {
+        assert_eq!(
+            ph["variable"], "input",
+            "parameter should be 'input' (processInput's parameter)"
+        );
+        assert_eq!(ph["approximate"], false);
+    }
+
+    aft.shutdown();
+}
+
+/// `trace_data` marks destructuring as an approximate hop.
+///
+/// In data_flow.ts:
+///   export function complexFlow(data: string): void {
+///       const { name, value } = JSON.parse(data);  // destructuring — approximate
+///   }
+#[test]
+fn callgraph_trace_data_approximation() {
+    let mut aft = AftProcess::spawn();
+    let fixtures = fixture_path("callgraph");
+    let root = fixtures.display().to_string();
+
+    aft.send(&format!(
+        r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
+        root
+    ));
+
+    let resp = aft.send(&format!(
+        r#"{{"id":"2","command":"trace_data","file":"{}/data_flow.ts","symbol":"complexFlow","expression":"data","depth":5}}"#,
+        root
+    ));
+
+    assert_eq!(resp["ok"], true, "trace_data should succeed: {:?}", resp);
+
+    let hops = resp["hops"].as_array().expect("hops array");
+
+    // Should have at least one approximate hop (the destructuring)
+    let has_approximate = hops.iter().any(|h| h["approximate"] == true);
+    assert!(
+        has_approximate,
+        "destructuring should produce an approximate hop, hops: {:?}",
+        hops
+    );
+
+    aft.shutdown();
+}

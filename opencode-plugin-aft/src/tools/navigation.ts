@@ -5,7 +5,7 @@ import type { BinaryBridge } from "../bridge.js";
 const z = tool.schema;
 
 /**
- * Tool definitions for navigation commands: configure, call_tree, callers, and trace_to.
+ * Tool definitions for navigation commands: configure, call_tree, callers, trace_to, impact, and trace_data.
  */
 export function navigationTools(bridge: BinaryBridge): Record<string, ToolDefinition> {
   return {
@@ -83,6 +83,52 @@ export function navigationTools(bridge: BinaryBridge): Record<string, ToolDefini
         };
         if (args.depth !== undefined) params.depth = args.depth;
         const response = await bridge.send("trace_to", params);
+        return JSON.stringify(response);
+      },
+    },
+
+    aft_impact: {
+      description:
+        "Analyze the impact of changing a symbol — returns all callers annotated with their signatures, entry point status, source line at call site, and extracted parameter names. Use to understand what breaks when a function signature changes. Response includes diagnostic fields: total_affected, affected_files. Use after aft_configure.",
+      args: {
+        file: z.string().describe("Path to the source file containing the target symbol (relative to project root or absolute)"),
+        symbol: z.string().describe("Name of the symbol to analyze impact for"),
+        depth: z
+          .number()
+          .optional()
+          .describe("Maximum transitive caller depth (default: 5)"),
+      },
+      execute: async (args): Promise<string> => {
+        const params: Record<string, unknown> = {
+          file: args.file,
+          symbol: args.symbol,
+        };
+        if (args.depth !== undefined) params.depth = args.depth;
+        const response = await bridge.send("impact", params);
+        return JSON.stringify(response);
+      },
+    },
+
+    aft_trace_data: {
+      description:
+        "Trace how an expression flows through variable assignments and function parameters across files. Tracks variable renames (const x = expr → x is the new tracking name), cross-file argument-to-parameter matching (f(x) → parameter 'input' in f's definition), and flags approximations where tracking is uncertain (destructuring, spread, unresolved calls). Response includes diagnostic fields: depth_limited, per-hop approximate flag. Use after aft_configure.",
+      args: {
+        file: z.string().describe("Path to the source file containing the symbol (relative to project root or absolute)"),
+        symbol: z.string().describe("Name of the function containing the expression to trace"),
+        expression: z.string().describe("The expression or variable name to track through data flow"),
+        depth: z
+          .number()
+          .optional()
+          .describe("Maximum cross-file hop depth (default: 5)"),
+      },
+      execute: async (args): Promise<string> => {
+        const params: Record<string, unknown> = {
+          file: args.file,
+          symbol: args.symbol,
+          expression: args.expression,
+        };
+        if (args.depth !== undefined) params.depth = args.depth;
+        const response = await bridge.send("trace_data", params);
         return JSON.stringify(response);
       },
     },

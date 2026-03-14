@@ -259,24 +259,24 @@ Use it to track what is actively in scope, what has been validated by completed 
 
 ### R024 — Data flow tracking
 - Class: differentiator
-- Status: active
+- Status: validated
 - Description: `trace_data` follows a specific expression through the call chain, showing type transformations and variable renames at each hop.
 - Why it matters: Understanding how a value flows through code is essential for debugging and security analysis. Currently requires manual tracing across files.
 - Source: user
 - Primary owning slice: M003/S04
 - Supporting slices: none
-- Validation: unmapped
+- Validation: S04 — 5 integration tests prove assignment tracking (variable renames through declarators), cross-file parameter matching (argument position to parameter name via extract_parameters), approximation marking on destructuring/spread, not_configured guard, symbol_not_found error. Response includes depth_limited flag and per-hop approximate markers.
 - Notes: Static analysis — tracks through assignments, function parameters, and return values.
 
 ### R025 — Change impact analysis
 - Class: differentiator
-- Status: active
+- Status: validated
 - Description: `impact` analyzes what breaks if a symbol is changed (e.g., add parameter, change return type). Reports direct callers needing update, indirect callers that may need update, and type impact.
 - Why it matters: Agents currently guess at impact or miss callers. Automated impact analysis prevents broken-but-not-caught changes.
 - Source: user
 - Primary owning slice: M003/S04
 - Supporting slices: none
-- Validation: unmapped
+- Validation: S04 — 3 integration tests prove multi-caller impact with signatures, entry point flags, call expressions, and extracted parameters; not_configured guard; symbol_not_found error. 15 unit tests prove extract_parameters across all 6 languages. Response includes total_affected and affected_files counts.
 - Notes: Includes suggestions for updating call sites (e.g., "add default argument"). D079 merged trace_data and impact into single slice S04.
 
 ### R026 — Entry point detection heuristics
@@ -486,8 +486,8 @@ Use it to track what is actively in scope, what has been validated by completed 
 | R021 | primary-user-loop | validated | M003/S01 | none | S01 |
 | R022 | primary-user-loop | validated | M003/S02 | none | S02 |
 | R023 | differentiator | validated | M003/S03 | none | S03 |
-| R024 | differentiator | active | M003/S04 | none | unmapped |
-| R025 | differentiator | active | M003/S04 | none | unmapped |
+| R024 | differentiator | validated | M003/S04 | none | S04 |
+| R025 | differentiator | validated | M003/S04 | none | S04 |
 | R026 | core-capability | validated | M003/S03 | none | S03 |
 | R027 | quality-attribute | validated | M003/S01 | M001/S01 | S01 |
 | R028 | core-capability | active | M004/S01 | none | unmapped |
@@ -507,7 +507,7 @@ Use it to track what is actively in scope, what has been validated by completed 
 
 ## Coverage Summary
 
-- Active requirements: 9
+- Active requirements: 7
 - Mapped to slices: 34
-- Validated: 26
+- Validated: 28
 - Unmapped active requirements: 0

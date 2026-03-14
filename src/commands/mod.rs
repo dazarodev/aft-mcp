@@ -17,6 +17,8 @@ pub mod outline;
 pub mod remove_import;
 pub mod restore_checkpoint;
 pub mod trace_to;
+pub mod trace_data;
+pub mod impact;
 pub mod transaction;
 pub mod undo;
 pub mod wrap_try_catch;
