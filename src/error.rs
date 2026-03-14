@@ -23,6 +23,12 @@ pub enum AftError {
     InvalidRequest {
         message: String,
     },
+    CheckpointNotFound {
+        name: String,
+    },
+    NoUndoHistory {
+        path: String,
+    },
 }
 
 impl AftError {
@@ -34,6 +40,8 @@ impl AftError {
             AftError::ParseError { .. } => "parse_error",
             AftError::FileNotFound { .. } => "file_not_found",
             AftError::InvalidRequest { .. } => "invalid_request",
+            AftError::CheckpointNotFound { .. } => "checkpoint_not_found",
+            AftError::NoUndoHistory { .. } => "no_undo_history",
         }
     }
 
@@ -70,6 +78,12 @@ impl fmt::Display for AftError {
             }
             AftError::InvalidRequest { message } => {
                 write!(f, "invalid request: {}", message)
+            }
+            AftError::CheckpointNotFound { name } => {
+                write!(f, "checkpoint not found: {}", name)
+            }
+            AftError::NoUndoHistory { path } => {
+                write!(f, "no undo history for: {}", path)
             }
         }
     }

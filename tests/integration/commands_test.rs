@@ -1,57 +1,6 @@
 //! Integration tests for the outline command through the binary protocol.
 
-use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
-
-/// A handle to a running aft process with piped I/O.
-struct AftProcess {
-    child: Child,
-    reader: BufReader<std::process::ChildStdout>,
-}
-
-impl AftProcess {
-    fn spawn() -> Self {
-        let binary = env!("CARGO_BIN_EXE_aft");
-        let mut child = Command::new(binary)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("failed to spawn aft binary");
-
-        let stdout = child.stdout.take().expect("stdout handle");
-        let reader = BufReader::new(stdout);
-
-        AftProcess { child, reader }
-    }
-
-    fn send(&mut self, request: &str) -> serde_json::Value {
-        let stdin = self.child.stdin.as_mut().expect("stdin handle");
-        writeln!(stdin, "{}", request).expect("write to stdin");
-        stdin.flush().expect("flush stdin");
-
-        let mut line = String::new();
-        self.reader.read_line(&mut line).expect("read from stdout");
-        assert!(
-            !line.is_empty(),
-            "expected a response line but got EOF from aft"
-        );
-        serde_json::from_str(line.trim()).expect("parse response JSON")
-    }
-
-    fn shutdown(mut self) -> std::process::ExitStatus {
-        drop(self.child.stdin.take());
-        self.child.wait().expect("wait for process exit")
-    }
-}
-
-fn fixture_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join(name)
-}
+use super::helpers::{AftProcess, fixture_path};
 
 #[test]
 fn test_outline_typescript_nested_structure() {

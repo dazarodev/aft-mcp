@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use crate::language::LanguageProvider;
+use crate::context::AppContext;
 use crate::protocol::{RawRequest, Response};
 use crate::symbols::{Range, Symbol};
 
@@ -26,7 +26,7 @@ pub struct OutlineEntry {
 /// Expects `file` in request params. Calls `list_symbols()` on the provider,
 /// then builds a nested tree: methods with a `parent` appear only under their
 /// parent entry, not duplicated at top level.
-pub fn handle_outline(req: &RawRequest, provider: &dyn LanguageProvider) -> Response {
+pub fn handle_outline(req: &RawRequest, ctx: &AppContext) -> Response {
     let file = match req.params.get("file").and_then(|v| v.as_str()) {
         Some(f) => f,
         None => {
@@ -47,7 +47,7 @@ pub fn handle_outline(req: &RawRequest, provider: &dyn LanguageProvider) -> Resp
         );
     }
 
-    let symbols = match provider.list_symbols(path) {
+    let symbols = match ctx.provider().list_symbols(path) {
         Ok(s) => s,
         Err(e) => {
             return Response::error(&req.id, e.code(), e.to_string());

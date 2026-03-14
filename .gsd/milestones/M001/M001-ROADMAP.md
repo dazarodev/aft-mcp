@@ -60,7 +60,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Structural Reading** `risk:medium` `depends:[S02]`
   > After this: `outline` returns a file's full symbol structure and `zoom` returns a single symbol's body with caller/callee annotations. Verified by running outline and zoom on real multi-symbol files.
 
-- [ ] **S04: Safety & Recovery System** `risk:medium` `depends:[S01]`
+- [x] **S04: Safety & Recovery System** `risk:medium` `depends:[S01]`
   > After this: `checkpoint` creates named workspace snapshots, `restore_checkpoint` rolls back, `undo` reverts a single file's last edit, `edit_history` shows the per-file edit stack. Verified by checkpoint → modify files → restore → diff shows no changes.
 
 - [ ] **S05: Three-Layer Editing Engine** `risk:medium` `depends:[S02,S04]`

@@ -80,8 +80,8 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Source: user
 - Primary owning slice: M001/S04
 - Supporting slices: M001/S05
-- Validation: unmapped
-- Notes: Undo stack is in-memory in the persistent process, with periodic flush to .aft/ directory.
+- Validation: S04 — BackupStore with snapshot/restore_latest/history, undo and edit_history commands wired through protocol, integration tests prove undo round-trip and history ordering. Auto-snapshot on mutation deferred to S05.
+- Notes: Undo stack is in-memory in the persistent process. Full validation (auto-snapshot before every mutation) requires S05.
 
 ### R008 — Workspace-wide checkpoints
 - Class: failure-visibility
@@ -91,8 +91,8 @@ Use it to track what is actively in scope, what has been validated by completed 
 - Source: user
 - Primary owning slice: M001/S04
 - Supporting slices: none
-- Validation: unmapped
-- Notes: Stored in .aft/checkpoints/ (gitignored). Lightweight file copies, not git objects.
+- Validation: S04 — CheckpointStore with create/restore/list/cleanup, all 5 commands wired through protocol, integration tests prove checkpoint→modify→restore cycle, name overwrite, TTL cleanup, and error paths. In-memory stores only (D001).
+- Notes: Stored in-memory (persistent process). TTL cleanup unit tested. Full end-to-end proof with mutation commands in S05.
 
 ### R009 — OpenCode plugin bridge
 - Class: integration

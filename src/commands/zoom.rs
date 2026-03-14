@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use crate::language::LanguageProvider;
+use crate::context::AppContext;
 use crate::parser::{FileParser, LangId};
 use crate::protocol::{RawRequest, Response};
 use crate::symbols::Range;
@@ -37,7 +37,7 @@ pub struct ZoomResponse {
 ///
 /// Expects `file`, `symbol` in request params, optional `context_lines` (default 3).
 /// Resolves the symbol, extracts body + context, walks AST for call annotations.
-pub fn handle_zoom(req: &RawRequest, provider: &dyn LanguageProvider) -> Response {
+pub fn handle_zoom(req: &RawRequest, ctx: &AppContext) -> Response {
     let file = match req.params.get("file").and_then(|v| v.as_str()) {
         Some(f) => f,
         None => {
@@ -76,7 +76,7 @@ pub fn handle_zoom(req: &RawRequest, provider: &dyn LanguageProvider) -> Respons
     }
 
     // Resolve the target symbol
-    let matches = match provider.resolve_symbol(path, symbol_name) {
+    let matches = match ctx.provider().resolve_symbol(path, symbol_name) {
         Ok(m) => m,
         Err(e) => {
             return Response::error(&req.id, e.code(), e.to_string());
@@ -154,7 +154,7 @@ pub fn handle_zoom(req: &RawRequest, provider: &dyn LanguageProvider) -> Respons
     };
 
     // Get all symbols in file for call matching
-    let all_symbols = match provider.list_symbols(path) {
+    let all_symbols = match ctx.provider().list_symbols(path) {
         Ok(s) => s,
         Err(e) => {
             return Response::error(&req.id, e.code(), e.to_string());
@@ -372,7 +372,8 @@ fn extract_last_segment(node: &tree_sitter::Node, source: &str) -> Option<String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::language::LanguageProvider;
+    use crate::config::Config;
+    use crate::context::AppContext;
     use crate::parser::TreeSitterProvider;
     use std::path::PathBuf;
 
@@ -381,6 +382,10 @@ mod tests {
             .join("tests")
             .join("fixtures")
             .join(name)
+    }
+
+    fn make_ctx() -> AppContext {
+        AppContext::new(Box::new(TreeSitterProvider::new()), Config::default())
     }
 
     // --- Call extraction tests ---
@@ -393,8 +398,8 @@ mod tests {
         let (tree, lang) = parser.parse(&path).unwrap();
 
         // `compute` calls `helper` — find compute's range from symbols
-        let provider = TreeSitterProvider::new();
-        let symbols = provider.list_symbols(&path).unwrap();
+        let ctx = make_ctx();
+        let symbols = ctx.provider().list_symbols(&path).unwrap();
         let compute = symbols.iter().find(|s| s.name == "compute").unwrap();
 
         let byte_start = line_col_to_byte(&source, compute.range.start_line, compute.range.start_col);
@@ -413,8 +418,8 @@ mod tests {
         let path = fixture_path("calls.ts");
         let (tree, lang) = parser.parse(&path).unwrap();
 
-        let provider = TreeSitterProvider::new();
-        let symbols = provider.list_symbols(&path).unwrap();
+        let ctx = make_ctx();
+        let symbols = ctx.provider().list_symbols(&path).unwrap();
         let run_all = symbols.iter().find(|s| s.name == "runAll").unwrap();
 
         let byte_start = line_col_to_byte(&source, run_all.range.start_line, run_all.range.start_col);
@@ -434,8 +439,8 @@ mod tests {
         let path = fixture_path("calls.ts");
         let (tree, lang) = parser.parse(&path).unwrap();
 
-        let provider = TreeSitterProvider::new();
-        let symbols = provider.list_symbols(&path).unwrap();
+        let ctx = make_ctx();
+        let symbols = ctx.provider().list_symbols(&path).unwrap();
         let unused = symbols.iter().find(|s| s.name == "unused").unwrap();
 
         let byte_start = line_col_to_byte(&source, unused.range.start_line, unused.range.start_col);
@@ -457,9 +462,9 @@ mod tests {
     #[test]
     fn context_lines_clamp_at_file_start() {
         // helper() is at the top of the file (line 2) — context_before should be clamped
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
-        let symbols = provider.list_symbols(&path).unwrap();
+        let symbols = ctx.provider().list_symbols(&path).unwrap();
         let helper = symbols.iter().find(|s| s.name == "helper").unwrap();
 
         let source = std::fs::read_to_string(&path).unwrap();
@@ -475,9 +480,9 @@ mod tests {
 
     #[test]
     fn context_lines_clamp_at_file_end() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
-        let symbols = provider.list_symbols(&path).unwrap();
+        let symbols = ctx.provider().list_symbols(&path).unwrap();
         let display = symbols.iter().find(|s| s.name == "display").unwrap();
 
         let source = std::fs::read_to_string(&path).unwrap();
@@ -499,9 +504,9 @@ mod tests {
 
     #[test]
     fn body_extraction_matches_source() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
-        let symbols = provider.list_symbols(&path).unwrap();
+        let symbols = ctx.provider().list_symbols(&path).unwrap();
         let compute = symbols.iter().find(|s| s.name == "compute").unwrap();
 
         let source = std::fs::read_to_string(&path).unwrap();
@@ -519,11 +524,11 @@ mod tests {
 
     #[test]
     fn zoom_response_has_calls_out_and_called_by() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
 
         let req = make_zoom_request("z-1", path.to_str().unwrap(), "compute", None);
-        let resp = handle_zoom(&req, &provider);
+        let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["ok"], true, "zoom should succeed: {:?}", json);
@@ -543,11 +548,11 @@ mod tests {
 
     #[test]
     fn zoom_response_empty_annotations_for_unused() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
 
         let req = make_zoom_request("z-2", path.to_str().unwrap(), "unused", None);
-        let resp = handle_zoom(&req, &provider);
+        let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["ok"], true);
@@ -562,11 +567,11 @@ mod tests {
 
     #[test]
     fn zoom_symbol_not_found() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
 
         let req = make_zoom_request("z-3", path.to_str().unwrap(), "nonexistent", None);
-        let resp = handle_zoom(&req, &provider);
+        let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["ok"], false);
@@ -575,11 +580,11 @@ mod tests {
 
     #[test]
     fn zoom_custom_context_lines() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
 
         let req = make_zoom_request("z-4", path.to_str().unwrap(), "compute", Some(1));
-        let resp = handle_zoom(&req, &provider);
+        let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["ok"], true);
@@ -593,9 +598,9 @@ mod tests {
 
     #[test]
     fn zoom_missing_file_param() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let req = make_raw_request("z-5", r#"{"id":"z-5","command":"zoom","symbol":"foo"}"#);
-        let resp = handle_zoom(&req, &provider);
+        let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["ok"], false);
@@ -604,14 +609,14 @@ mod tests {
 
     #[test]
     fn zoom_missing_symbol_param() {
-        let provider = TreeSitterProvider::new();
+        let ctx = make_ctx();
         let path = fixture_path("calls.ts");
         let req_str = format!(
             r#"{{"id":"z-6","command":"zoom","file":"{}"}}"#,
             path.display()
         );
         let req: RawRequest = serde_json::from_str(&req_str).unwrap();
-        let resp = handle_zoom(&req, &provider);
+        let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["ok"], false);

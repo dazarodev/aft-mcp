@@ -12,7 +12,7 @@ One-call semantic file operations that eliminate mechanical token waste — agen
 
 ## Current State
 
-M001/S01, S02, and S03 complete. The `aft` Rust binary runs as a persistent process with NDJSON protocol, embeds tree-sitter grammars for 6 languages (TypeScript, JavaScript, TSX, Python, Rust, Go), and now handles `outline` and `zoom` commands. Outline returns nested symbol trees (methods under classes, multi-level nesting). Zoom returns a symbol's body with configurable context lines and file-scoped caller/callee annotations via AST walking. `TreeSitterProvider` is wired through dispatch. 84 tests pass (72 unit + 12 integration). The `src/commands/` module pattern is established for all future commands. Next: S04 (safety/recovery system) or S05 (editing engine).
+M001/S01–S04 complete. The `aft` Rust binary runs as a persistent process with NDJSON protocol, embeds tree-sitter grammars for 6 languages (TypeScript, JavaScript, TSX, Python, Rust, Go), and handles `outline`, `zoom`, `checkpoint`, `restore_checkpoint`, `list_checkpoints`, `undo`, and `edit_history` commands. AppContext threads shared state (LanguageProvider, BackupStore, CheckpointStore, Config) through dispatch. BackupStore provides per-file undo with snapshot/restore. CheckpointStore provides named workspace snapshots with create/restore/list/cleanup. 105 tests pass (86 unit + 19 integration). Next: S05 (three-layer editing engine — edit_symbol, edit_match, write, batch with auto-backup and syntax validation).
 
 ## Architecture / Key Patterns
 

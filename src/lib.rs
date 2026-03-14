@@ -1,5 +1,8 @@
+pub mod backup;
+pub mod checkpoint;
 pub mod commands;
 pub mod config;
+pub mod context;
 pub mod error;
 pub mod language;
 pub mod parser;
@@ -118,6 +121,24 @@ mod tests {
             message: "missing field".into(),
         };
         assert_eq!(err.to_string(), "invalid request: missing field");
+    }
+
+    #[test]
+    fn error_display_checkpoint_not_found() {
+        let err = AftError::CheckpointNotFound {
+            name: "pre-refactor".into(),
+        };
+        assert_eq!(err.to_string(), "checkpoint not found: pre-refactor");
+        assert_eq!(err.code(), "checkpoint_not_found");
+    }
+
+    #[test]
+    fn error_display_no_undo_history() {
+        let err = AftError::NoUndoHistory {
+            path: "src/main.rs".into(),
+        };
+        assert_eq!(err.to_string(), "no undo history for: src/main.rs");
+        assert_eq!(err.code(), "no_undo_history");
     }
 
     #[test]
