@@ -66,56 +66,9 @@ finds the symbol, replaces it, validates syntax, and runs the formatter. Nothing
 
 ---
 
-## Installation
+## How to Use
 
-### Option 1: npm (plugin only, binary auto-downloads)
-
-```sh
-npm install @aft/opencode
-```
-
-This is the most common path. The OpenCode plugin installs, and the Rust binary downloads
-automatically on first use. No extra steps.
-
-### Option 2: npm with bundled binary
-
-Install a platform-specific package to skip the auto-download entirely:
-
-```sh
-# macOS Apple Silicon
-npm install @aft/darwin-arm64
-
-# macOS Intel
-npm install @aft/darwin-x64
-
-# Linux x64
-npm install @aft/linux-x64
-```
-
-### Option 3: Cargo (binary only)
-
-```sh
-cargo install aft
-```
-
-This puts the `aft` binary on your PATH. Pair it with the `@aft/opencode` npm package for the
-OpenCode plugin side.
-
----
-
-## Binary Resolution
-
-When the plugin starts, it finds the `aft` binary in this order:
-
-1. Cached binary at `~/.cache/aft/bin/aft` (XDG-aware)
-2. Platform npm package (`@aft/darwin-arm64`, etc.)
-3. `aft` on `$PATH`
-4. `~/.cargo/bin/aft`
-5. Auto-download from GitHub releases (latest tag, cached for future runs)
-
----
-
-## Quick Start
+### OpenCode
 
 Add AFT to your OpenCode config:
 
