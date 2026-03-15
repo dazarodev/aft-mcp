@@ -37,7 +37,8 @@ export function editingTools(ctx: PluginContext): Record<string, ToolDefinition>
         "- 'write': Write full file content — for new files or complete rewrites. Needs 'content'.\n" +
         "- 'batch': Multiple edits in one file atomically — each edit is {match, replacement} or {line_start, line_end, content} (1-based, inclusive). Supports per-edit 'occurrence' for disambiguation. Set content to empty string to delete lines entirely. line_start == total_lines+1 appends at EOF. line_end is auto-clamped to last line (safe to overshoot).\n" +
         "- 'transaction': Atomic multi-file edits with rollback — if any file fails, all revert. Needs 'operations' array of {file, command, ...}.\n" +
-        "Returns formatted, validation_errors, backup_id.",
+        "Pass diagnostics=true to get LSP type errors/warnings inline in the response (avoids a separate aft_lsp_diagnostics call).\\n" +
+        "Returns formatted, validation_errors, backup_id, and optionally lsp_diagnostics.",
       args: {
         mode: z.enum(["symbol", "match", "write", "batch", "transaction"]).describe("Editing mode"),
         file: z
@@ -98,6 +99,12 @@ export function editingTools(ctx: PluginContext): Record<string, ToolDefinition>
           .optional()
           .describe("Validation level: 'syntax' (default) or 'full'"),
         dry_run: z.boolean().optional().describe("Preview as unified diff without modifying files"),
+        diagnostics: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, returns LSP diagnostics (type errors, warnings) inline in the response after the edit. Avoids a separate aft_lsp_diagnostics call. Default: false.",
+          ),
       },
       execute: async (args, context): Promise<string> => {
         const bridge = ctx.pool.getBridge(context.directory);
@@ -107,6 +114,7 @@ export function editingTools(ctx: PluginContext): Record<string, ToolDefinition>
         if (args.file !== undefined) params.file = args.file;
         if (args.validate !== undefined) params.validate = args.validate;
         if (args.dry_run !== undefined) params.dry_run = args.dry_run;
+        if (args.diagnostics !== undefined) params.diagnostics = args.diagnostics;
 
         let command: string;
 
