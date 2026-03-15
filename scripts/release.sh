@@ -70,6 +70,24 @@ if [[ "$DRY" == "--dry" ]]; then
   exit 0
 fi
 
+echo "→ Running pre-release checks..."
+echo ""
+
+echo "  cargo test..."
+cargo test --quiet 2>&1 || { echo "Error: Rust tests failed"; exit 1; }
+
+echo "  bun lint..."
+bun run lint 2>&1 || { echo "Error: Lint failed"; exit 1; }
+
+echo "  bun typecheck..."
+bun run typecheck 2>&1 || { echo "Error: Typecheck failed"; exit 1; }
+
+echo "  bun test..."
+bun test 2>&1 || { echo "Error: Plugin tests failed"; exit 1; }
+
+echo "  ✓ All checks passed"
+echo ""
+
 echo "→ Syncing versions to $VERSION..."
 node scripts/version-sync.mjs "$VERSION"
 echo ""

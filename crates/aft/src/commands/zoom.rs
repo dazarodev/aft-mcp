@@ -119,15 +119,15 @@ pub fn handle_zoom(req: &RawRequest, ctx: &AppContext) -> Response {
             }
 
             let start_idx = start - 1;
-            let end_idx = end - 1;
-            if start_idx >= lines.len() || end_idx >= lines.len() {
+            // Clamp end_line to file length (same as batch edits)
+            let end_idx = (end - 1).min(lines.len() - 1);
+            if start_idx >= lines.len() {
                 return Response::error(
                     &req.id,
                     "invalid_request",
                     format!(
-                        "zoom: requested lines {}-{} are out of range for {} ({} lines)",
+                        "zoom: start_line {} is past end of {} ({} lines)",
                         start,
-                        end,
                         file,
                         lines.len()
                     ),

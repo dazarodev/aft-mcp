@@ -7,6 +7,7 @@
 import { tool } from "@opencode-ai/plugin";
 
 const z = tool.schema;
+
 import type { ToolDefinition } from "@opencode-ai/plugin";
 import type { PluginContext } from "../types.js";
 
@@ -50,24 +51,14 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
       args: {
         pattern: z
           .string()
-          .describe(
-            "AST pattern with meta-variables ($VAR, $$$). Must be complete AST node.",
-          ),
+          .describe("AST pattern with meta-variables ($VAR, $$$). Must be complete AST node."),
         lang: z.enum(SUPPORTED_LANGS).describe("Target language"),
-        paths: z
-          .array(z.string())
-          .optional()
-          .describe("Paths to search (default: ['.'])"),
+        paths: z.array(z.string()).optional().describe("Paths to search (default: ['.'])"),
         globs: z
           .array(z.string())
           .optional()
-          .describe(
-            "Include/exclude globs (prefix ! to exclude)",
-          ),
-        context: z
-          .number()
-          .optional()
-          .describe("Context lines around match"),
+          .describe("Include/exclude globs (prefix ! to exclude)"),
+        context: z.number().optional().describe("Context lines around match"),
       },
       execute: async (args, context): Promise<string> => {
         const bridge = ctx.pool.getBridge(context.directory);
@@ -89,29 +80,12 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
         "Use meta-variables in rewrite to preserve matched content. " +
         "Example: pattern='console.log($MSG)' rewrite='logger.info($MSG)'",
       args: {
-        pattern: z
-          .string()
-          .describe("AST pattern to match"),
-        rewrite: z
-          .string()
-          .describe(
-            "Replacement pattern (can use $VAR from pattern)",
-          ),
+        pattern: z.string().describe("AST pattern to match"),
+        rewrite: z.string().describe("Replacement pattern (can use $VAR from pattern)"),
         lang: z.enum(SUPPORTED_LANGS).describe("Target language"),
-        paths: z
-          .array(z.string())
-          .optional()
-          .describe("Paths to search"),
-        globs: z
-          .array(z.string())
-          .optional()
-          .describe("Include/exclude globs"),
-        dryRun: z
-          .boolean()
-          .optional()
-          .describe(
-            "Preview changes without applying (default: true)",
-          ),
+        paths: z.array(z.string()).optional().describe("Paths to search"),
+        globs: z.array(z.string()).optional().describe("Include/exclude globs"),
+        dryRun: z.boolean().optional().describe("Preview changes without applying (default: true)"),
       },
       execute: async (args, context): Promise<string> => {
         const bridge = ctx.pool.getBridge(context.directory);
