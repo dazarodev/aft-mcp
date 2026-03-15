@@ -49,7 +49,7 @@ fn inline_symbol_basic_ts() {
 
     // Inline `add` at line 10 (const result = add(x, y))
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"add","call_site_line":10}}"#,
+        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"add","call_site_line":11}}"#,
         file
     ));
 
@@ -83,7 +83,7 @@ fn inline_symbol_expression_body() {
 
     // Inline `double` at line 17 (const val = double(5)) — 0-indexed
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"double","call_site_line":17}}"#,
+        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"double","call_site_line":18}}"#,
         file
     ));
 
@@ -116,7 +116,7 @@ fn inline_symbol_python() {
 
     // Inline `add` at line 9 (result = add(x, y)) — 0-indexed
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"add","call_site_line":9}}"#,
+        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"add","call_site_line":10}}"#,
         file
     ));
 
@@ -147,7 +147,7 @@ fn inline_symbol_dry_run() {
     let before = std::fs::read_to_string(&file).unwrap();
 
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"add","call_site_line":10,"dry_run":true}}"#,
+        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"add","call_site_line":11,"dry_run":true}}"#,
         file
     ));
 
@@ -179,7 +179,7 @@ fn inline_symbol_multiple_returns() {
 
     // multiReturn has 2 return statements
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"multiReturn","call_site_line":8}}"#,
+        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"multiReturn","call_site_line":9}}"#,
         file
     ));
 
@@ -204,7 +204,7 @@ fn inline_symbol_scope_conflict() {
 
     // compute() body declares `temp` and `result`, both exist at call site
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"compute","call_site_line":8}}"#,
+        r#"{{"id":"1","command":"inline_symbol","file":"{}","symbol":"compute","call_site_line":9}}"#,
         file
     ));
 

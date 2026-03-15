@@ -60,10 +60,10 @@ describe("Windows binary naming", () => {
   test("win32-x64 platform key is used for Windows binary lookup", () => {
     const key = platformKey("win32", "x64");
     expect(key).toBe("win32-x64");
-    // The resolver constructs `@aft/${key}/bin/aft.exe` for win32
+    // The resolver constructs `@cortexkit/aft-${key}/bin/aft.exe` for win32
     // Verify the naming convention matches the win32 platform package
-    const expectedBin = `@aft/${key}/bin/aft.exe`;
-    expect(expectedBin).toBe("@aft/win32-x64/bin/aft.exe");
+    const expectedBin = `@cortexkit/aft-${key}/bin/aft.exe`;
+    expect(expectedBin).toBe("@cortexkit/aft-win32-x64/bin/aft.exe");
   });
 
   test("non-win32 platforms do not use .exe", () => {
@@ -74,7 +74,7 @@ describe("Windows binary naming", () => {
       ["linux", "x64"],
     ] as const) {
       const key = platformKey(platform, arch);
-      const expectedBin = `@aft/${key}/bin/aft`;
+      const expectedBin = `@cortexkit/aft-${key}/bin/aft`;
       expect(expectedBin).not.toContain(".exe");
     }
   });

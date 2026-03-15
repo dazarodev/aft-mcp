@@ -3,7 +3,7 @@
  *
  * Resolution order (in resolver.ts):
  *   1. Cached binary in ~/.cache/aft/bin/
- *   2. npm platform package (@aft/darwin-arm64, etc.)
+ *   2. npm platform package (@cortexkit/aft-darwin-arm64, etc.)
  *   3. PATH lookup (which aft)
  *   4. ~/.cargo/bin/aft
  *   5. Auto-download from GitHub releases (this module)

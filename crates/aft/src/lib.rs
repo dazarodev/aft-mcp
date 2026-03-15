@@ -1,3 +1,4 @@
+pub mod ast_grep_lang;
 pub mod backup;
 pub mod callgraph;
 pub mod calls;

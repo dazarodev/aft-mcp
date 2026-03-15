@@ -5,7 +5,7 @@
  *
  * Validates all 6 AFT npm package.json files:
  * - 5 platform packages under npm/{platform}/
- * - 1 root @aft/opencode package at opencode-plugin-aft/
+ * - 1 root @cortexkit/aft-opencode package at opencode-plugin-aft/
  *
  * Checks: os/cpu fields match directory, preferUnplugged, bin field,
  * optionalDependencies in core, version alignment, required fields.
@@ -52,13 +52,13 @@ for (const { dir, os, cpu } of PLATFORMS) {
   const pkg = readPkg(pkgPath);
   if (!pkg) continue;
 
-  const label = `@aft/${dir}`;
+  const label = `@cortexkit/aft-${dir}`;
 
   // Required fields
   if (!pkg.name) fail(label, "missing 'name'");
   if (!pkg.version) fail(label, "missing 'version'");
-  if (pkg.name && pkg.name !== `@aft/${dir}`) {
-    fail(label, `name should be '@aft/${dir}', got '${pkg.name}'`);
+  if (pkg.name && pkg.name !== `@cortexkit/aft-${dir}`) {
+    fail(label, `name should be '@cortexkit/aft-${dir}', got '${pkg.name}'`);
   }
 
   // os/cpu arrays
@@ -84,25 +84,25 @@ for (const { dir, os, cpu } of PLATFORMS) {
   if (pkg.version) platformVersions.push({ name: label, version: pkg.version });
 }
 
-// --- Validate @aft/opencode ---
+// --- Validate @cortexkit/aft-opencode ---
 
 const corePath = join(root, "packages", "opencode-plugin", "package.json");
 const core = readPkg(corePath);
 
 if (core) {
-  const label = "@aft/opencode";
+  const label = "@cortexkit/aft-opencode";
 
   // Required fields
   if (!core.name) fail(label, "missing 'name'");
   if (!core.version) fail(label, "missing 'version'");
-  if (core.name && core.name !== "@aft/opencode") {
-    fail(label, `name should be '@aft/opencode', got '${core.name}'`);
+  if (core.name && core.name !== "@cortexkit/aft-opencode") {
+    fail(label, `name should be '@cortexkit/aft-opencode', got '${core.name}'`);
   }
 
   // optionalDependencies must list all 5 platform packages
   const optDeps = core.optionalDependencies || {};
   for (const { dir } of PLATFORMS) {
-    const depName = `@aft/${dir}`;
+    const depName = `@cortexkit/aft-${dir}`;
     if (!(depName in optDeps)) {
       fail(label, `optionalDependencies missing '${depName}'`);
     }
@@ -129,7 +129,7 @@ if (core?.version && core.optionalDependencies) {
     if (depVersion !== core.version) {
       fail(
         "version-alignment",
-        `@aft/opencode optionalDependencies['${depName}'] is '${depVersion}' but core version is '${core.version}'`,
+        `@cortexkit/aft-opencode optionalDependencies['${depName}'] is '${depVersion}' but core version is '${core.version}'`,
       );
     }
   }
@@ -150,6 +150,6 @@ if (errors.length > 0) {
   console.log(`  Versions aligned at ${platformVersions[0]?.version || "unknown"}`);
   console.log("  Platform os/cpu fields correct");
   console.log("  preferUnplugged set on all platform packages");
-  console.log("  optionalDependencies complete in @aft/opencode");
+  console.log("  optionalDependencies complete in @cortexkit/aft-opencode");
   process.exit(0);
 }

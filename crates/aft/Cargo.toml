@@ -1,12 +1,16 @@
 [package]
-name = "aft"
+name = "agent-file-tools"
 version = "0.1.0"
 edition = "2021"
 description = "Agent File Tools — tree-sitter powered code analysis for AI agents"
 license = "MIT"
-repository = "https://github.com/nichochar/opencode-sfm"
+repository = "https://github.com/ualtinok/aft"
 keywords = ["tree-sitter", "code-analysis", "ai-agent", "ast"]
 categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "aft"
+path = "src/lib.rs"
 
 [[bin]]
 name = "aft"
@@ -23,10 +27,12 @@ tree-sitter-rust = "0.24"
 tree-sitter-go = "0.25"
 tree-sitter-md = "0.5"
 similar = "2"
+ast-grep-core = "0.41"
 streaming-iterator = "0.1"
 ignore = "0.4"
 notify = "8"
-unescaper = "0.1.8"
+
+glob = "0.3"
 
 [dev-dependencies]
 tempfile = "3"

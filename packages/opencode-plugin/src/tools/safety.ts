@@ -19,7 +19,8 @@ export function safetyTools(ctx: PluginContext): Record<string, ToolDefinition> 
         "- 'checkpoint': Save a named snapshot of tracked files. Needs 'name', optional 'files' array.\n" +
         "- 'restore': Restore files to a checkpoint state. Needs 'name'.\n" +
         "- 'list': List all available checkpoints.\n" +
-        "Use checkpoint before risky multi-file changes. Use undo for quick single-file rollback.",
+        "Use checkpoint before risky multi-file changes. Use undo for quick single-file rollback.\n" +
+        "Note: backups are in-memory (lost on restart). Per-file undo stack is capped at 20 entries (oldest evicted).",
       args: {
         op: z
           .enum(["undo", "history", "checkpoint", "restore", "list"])

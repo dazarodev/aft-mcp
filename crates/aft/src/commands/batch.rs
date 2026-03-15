@@ -23,7 +23,7 @@ struct ResolvedEdit {
 ///   - `file` (string, required) — target file path
 ///   - `edits` (array, required) — each element is either:
 ///       - `{ "match": "...", "replacement": "..." }` — string match-replace
-///       - `{ "line_start": N, "line_end": N, "content": "..." }` — line range replacement (0-indexed, inclusive)
+///       - `{ "line_start": N, "line_end": N, "content": "..." }` — line range replacement (1-based, inclusive)
 ///
 /// Returns on success: `{ file, edits_applied, syntax_valid, backup_id? }`
 /// Returns on failure: error with the failing edit index.
@@ -234,7 +234,7 @@ fn resolve_edit(
         })
     } else if edit_val.get("line_start").is_some() {
         // Line-range replacement
-        let line_start = edit_val
+        let line_start_1based = edit_val
             .get("line_start")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
@@ -243,13 +243,21 @@ fn resolve_edit(
                     req_id,
                     "invalid_request",
                     format!(
-                        "batch: edit[{}] 'line_start' must be a non-negative integer",
+                        "batch: edit[{}] 'line_start' must be a positive integer (1-based)",
                         index
                     ),
                 )
             })?;
+        if line_start_1based == 0 {
+            return Err(Response::error(
+                req_id,
+                "invalid_request",
+                format!("batch: edit[{}] 'line_start' must be >= 1 (1-based)", index),
+            ));
+        }
+        let line_start = line_start_1based - 1;
 
-        let line_end = edit_val
+        let line_end_1based = edit_val
             .get("line_end")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
@@ -258,11 +266,19 @@ fn resolve_edit(
                     req_id,
                     "invalid_request",
                     format!(
-                        "batch: edit[{}] 'line_end' must be a non-negative integer",
+                        "batch: edit[{}] 'line_end' must be a positive integer (1-based)",
                         index
                     ),
                 )
             })?;
+        if line_end_1based == 0 {
+            return Err(Response::error(
+                req_id,
+                "invalid_request",
+                format!("batch: edit[{}] 'line_end' must be >= 1 (1-based)", index),
+            ));
+        }
+        let line_end = line_end_1based - 1;
 
         let content = edit_val
             .get("content")
@@ -272,15 +288,33 @@ fn resolve_edit(
         let lines: Vec<&str> = source.lines().collect();
         let total_lines = lines.len();
 
-        if line_start >= total_lines {
+        // Allow line_start == total_lines for appending at end of file
+        if line_start > total_lines {
             return Err(Response::error(
                 req_id,
                 "batch_edit_failed",
                 format!(
                     "batch: edit[{}] line_start {} out of range (file has {} lines)",
-                    index, line_start, total_lines
+                    index, line_start_1based, total_lines
                 ),
             ));
+        }
+
+        // Append at EOF: line_start == total_lines means insert after last line
+        if line_start == total_lines {
+            let byte_pos = source.len();
+            let mut replacement_str = content.to_string();
+            if !source.ends_with('\n') && !replacement_str.starts_with('\n') {
+                replacement_str.insert(0, '\n');
+            }
+            if !replacement_str.ends_with('\n') {
+                replacement_str.push('\n');
+            }
+            return Ok(ResolvedEdit {
+                byte_start: byte_pos,
+                byte_end: byte_pos,
+                replacement: replacement_str,
+            });
         }
 
         // Allow pure insert: line_start == line_end + 1 means insert before line_start
@@ -289,8 +323,8 @@ fn resolve_edit(
                 req_id,
                 "invalid_request",
                 format!(
-                    "batch: edit[{}] line_start {} > line_end {} + 1",
-                    index, line_start, line_end
+                    "batch: edit[{}] line_start {} > line_end {}",
+                    index, line_start_1based, line_end_1based
                 ),
             ));
         }
@@ -318,16 +352,12 @@ fn resolve_edit(
             });
         }
 
-        if line_end >= total_lines {
-            return Err(Response::error(
-                req_id,
-                "batch_edit_failed",
-                format!(
-                    "batch: edit[{}] line_end {} out of range (file has {} lines)",
-                    index, line_end, total_lines
-                ),
-            ));
-        }
+        // Clamp line_end to last valid line instead of hard error
+        let line_end = if line_end >= total_lines {
+            total_lines - 1
+        } else {
+            line_end
+        };
 
         // Convert line range to byte offsets
         let byte_start = line_byte_offset(source, line_start);

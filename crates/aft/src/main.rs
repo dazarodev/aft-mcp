@@ -90,6 +90,8 @@ fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
         "move_symbol" => aft::commands::move_symbol::handle_move_symbol(&req, ctx),
         "extract_function" => aft::commands::extract_function::handle_extract_function(&req, ctx),
         "inline_symbol" => aft::commands::inline_symbol::handle_inline_symbol(&req, ctx),
+        "ast_search" => aft::commands::ast_search::handle_ast_search(&req, ctx),
+        "ast_replace" => aft::commands::ast_replace::handle_ast_replace(&req, ctx),
         // Test-only: populate the backup store through the protocol (no write/edit_symbol yet)
         "snapshot" => handle_snapshot(&req, ctx),
         _ => {

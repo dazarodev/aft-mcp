@@ -51,7 +51,7 @@ fn extract_function_basic_ts() {
     // Extract lines 5-9 of processData (the body lines with filtered, mapped, result, console.log)
     // These use `items`, `prefix` from the enclosing function → free variables
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"extract_function","file":"{}","name":"doProcess","start_line":5,"end_line":9}}"#,
+        r#"{{"id":"1","command":"extract_function","file":"{}","name":"doProcess","start_line":6,"end_line":10}}"#,
         file
     ));
 
@@ -94,7 +94,7 @@ fn extract_function_with_return_value() {
     // Extract lines 13-14 of simpleHelper (doubled and added)
     // `added` is used after the range (return added) → return value
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"extract_function","file":"{}","name":"computeValues","start_line":13,"end_line":15}}"#,
+        r#"{{"id":"1","command":"extract_function","file":"{}","name":"computeValues","start_line":14,"end_line":16}}"#,
         file
     ));
 
@@ -138,7 +138,7 @@ fn extract_function_python() {
 
     // Extract lines 5-8 of process_data body
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"extract_function","file":"{}","name":"do_process","start_line":5,"end_line":9}}"#,
+        r#"{{"id":"1","command":"extract_function","file":"{}","name":"do_process","start_line":6,"end_line":10}}"#,
         file
     ));
 
@@ -180,7 +180,7 @@ fn extract_function_dry_run() {
     let before = std::fs::read_to_string(&file).unwrap();
 
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"extract_function","file":"{}","name":"preview","start_line":5,"end_line":9,"dry_run":true}}"#,
+        r#"{{"id":"1","command":"extract_function","file":"{}","name":"preview","start_line":6,"end_line":10,"dry_run":true}}"#,
         file
     ));
 
@@ -212,7 +212,7 @@ fn extract_function_unsupported_language() {
     std::fs::write(&file, "fn main() {\n    let x = 1;\n}\n").unwrap();
 
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"extract_function","file":"{}","name":"foo","start_line":1,"end_line":2}}"#,
+        r#"{{"id":"1","command":"extract_function","file":"{}","name":"foo","start_line":2,"end_line":3}}"#,
         file
     ));
 
@@ -233,7 +233,7 @@ fn extract_function_this_reference() {
 
     // Lines 4-7 of UserService.getUser contain `this.users`
     let resp = aft.send(&format!(
-        r#"{{"id":"1","command":"extract_function","file":"{}","name":"extracted","start_line":4,"end_line":7}}"#,
+        r#"{{"id":"1","command":"extract_function","file":"{}","name":"extracted","start_line":5,"end_line":8}}"#,
         file
     ));
 

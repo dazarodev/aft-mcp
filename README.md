@@ -63,6 +63,7 @@ finds the symbol, replaces it, validates syntax, and runs the formatter. Nothing
 - **Structural transforms** — add class members, Rust derive macros, Python decorators, Go struct tags, wrap try/catch
 - **Workspace-wide refactoring** — move symbols between files (updates all imports), extract functions, inline functions
 - **Safety & recovery** — undo last edit, named checkpoints, restore to any checkpoint
+- **AST pattern search & replace** — structural code search using meta-variables (`$VAR`, `$$$`), powered by ast-grep
 
 ---
 
@@ -75,7 +76,7 @@ Add AFT to your OpenCode config:
 ```json
 // ~/.config/opencode/config.json
 {
-  "plugins": ["@aft/opencode"]
+  "plugins": ["@cortexkit/aft-opencode"]
 }
 ```
 
@@ -131,9 +132,12 @@ available. Here's a typical agent workflow:
 
 ## Tool Reference
 
+> **All line numbers are 1-based** (matching editor, git, and compiler conventions).
+> Line 1 is the first line of the file.
+
 | Tool | Description | Key Params |
 |------|-------------|------------|
-| `aft_outline` | Structural outline of a file | `file`, `files[]` |
+| `aft_outline` | Structural outline of a file (including Markdown headings) | `file`, `files[]` |
 | `aft_zoom` | Deep-inspect a symbol with call-graph info | `file`, `symbol`, `symbols[]`, `start_line`, `end_line` |
 | `aft_edit` | Precision file edits (symbol, match, write, batch, transaction) | `mode`, `file`, `symbol`, `match`, `content`, `edits[]` |
 | `aft_navigate` | Call graph and data-flow navigation | `mode`, `file`, `symbol`, `depth` |
@@ -141,13 +145,19 @@ available. Here's a typical agent workflow:
 | `aft_transform` | Structural code transforms (members, derives, decorators) | `op`, `file`, `scope`, `target` |
 | `aft_refactor` | Workspace-wide move, extract, inline | `op`, `file`, `symbol`, `destination` |
 | `aft_safety` | Undo, history, checkpoints, restore | `op`, `file`, `name` |
+| `aft_ast_search` | AST-aware pattern search with meta-variables | `pattern`, `lang`, `paths[]`, `globs[]` |
+| `aft_ast_replace` | AST-aware pattern replace (dry-run by default) | `pattern`, `rewrite`, `lang`, `dryRun` |
 
 ---
 
 ### aft_outline
 
-Returns all top-level symbols in a file with their kind, name, line range, and visibility.
-Accepts either a single `file` or a `files` array to outline multiple files in one call.
+Returns all top-level symbols in a file with their kind, name, line range, visibility, and nested
+`members` (methods in classes, sub-headings in Markdown). Accepts either a single `file` or a
+`files` array to outline multiple files in one call.
+
+For **Markdown** files (`.md`, `.mdx`): returns heading hierarchy with section ranges — each
+heading becomes a symbol you can zoom into by name.
 
 ```json
 // Outline two files at once
@@ -164,6 +174,9 @@ annotations (`calls_out`, `called_by`). Three access patterns:
 - **Named symbol**: `{ "file": "...", "symbol": "myFunction" }`
 - **Multiple symbols**: `{ "file": "...", "symbols": ["funcA", "funcB"] }`
 - **Line range**: `{ "file": "...", "start_line": 10, "end_line": 25 }`
+
+For **Markdown**: use the heading text as the symbol name (e.g. `"symbol": "Architecture"`) to
+read the entire section.
 
 Use `scope` to disambiguate symbols with the same name (e.g. `"scope": "MyClass.method"`).
 Use `context_lines` to control how many surrounding lines appear (default: 3).
@@ -203,9 +216,18 @@ Set `replace_all: true` to replace every occurrence. If multiple matches exist w
 or `replace_all`, the response returns `ambiguous_match` with all candidates.
 
 **`write`** — write the full file content. For new files or complete rewrites.
+**`write`** — write the full file content. For new files or complete rewrites.
+
+**Glob patterns** — use a glob in `file` to replace across multiple files in one call:
+
+```json
+{ "mode": "match", "file": "**/*.ts", "match": "oldName", "replacement": "newName" }
+```
+
+Returns `{ files: [...], total_replacements, total_files }`.
 
 **`batch`** — apply multiple edits atomically to one file. Each edit is either a match/replace
-or a line-range replacement.
+or a line-range replacement (1-based, inclusive).
 
 ```json
 {
@@ -218,10 +240,12 @@ or a line-range replacement.
 }
 ```
 
+Per-edit `occurrence` is supported for disambiguation. Set `content` to empty string to delete
+lines entirely.
+
 **`transaction`** — atomic edits across multiple files. If any file fails, all revert.
 
 All modes support `dry_run: true` to preview as a diff without modifying files.
-
 ---
 
 ### aft_navigate
@@ -304,8 +328,8 @@ Workspace-wide refactoring that updates imports and references across all files.
 | Op | Description |
 |----|-------------|
 | `move` | Move a symbol to another file, updating all imports workspace-wide |
-| `extract` | Extract a line range into a new function (auto-detects parameters) |
-| `inline` | Replace a call site with the function's body |
+| `extract` | Extract a line range (1-based) into a new function (auto-detects parameters) |
+| `inline` | Replace a call site (1-based `call_site_line`) with the function's body |
 
 ```json
 // Move a utility function to a shared module
@@ -340,6 +364,35 @@ Backup and recovery for risky edits.
 // Restore if something goes wrong
 { "op": "restore", "name": "before-auth-refactor" }
 ```
+
+> **Note:** Backups are held in-memory for the session lifetime (lost on restart). Per-file undo
+> stack is capped at 20 entries — oldest snapshots are evicted when exceeded.
+
+
+### aft_ast_search
+
+Search for AST patterns across your codebase using tree-sitter structural matching. Patterns use meta-variables (`$VAR` for single nodes, `$$$` for multiple nodes) and must be valid code fragments.
+
+```json
+{ "pattern": "console.log($MSG)", "lang": "typescript" }
+```
+
+Returns matches with file, line (1-based), column, matched text, and captured meta-variable values. Add `context: 3` to include surrounding lines.
+
+More pattern examples:
+- `def $FUNC($$$):` — find all Python function definitions
+- `async function $NAME($$$) { $$$ }` — find async functions in JS/TS
+- `if ($COND) { $$$ }` — find all if blocks
+
+### aft_ast_replace
+
+Replace AST patterns across files with structural rewriting. Dry-run by default.
+
+```json
+{ "pattern": "console.log($MSG)", "rewrite": "logger.info($MSG)", "lang": "typescript" }
+```
+
+Meta-variables captured in the pattern are available in the rewrite template. Returns unified diffs per file in dry-run mode, or writes changes with backups.
 
 ---
 
@@ -401,7 +454,7 @@ OpenCode agent
      |
      | tool calls
      v
-@aft/opencode (TypeScript plugin)
+@cortexkit/aft-opencode (TypeScript plugin)
   - Registers 8 tools with OpenCode SDK
   - Manages a BridgePool (one aft process per project directory)
   - Resolves the binary path (cache → npm → PATH → cargo → download)
@@ -432,6 +485,7 @@ session — warm parse trees, no re-spawn overhead per call.
 | Python | ✓ | ✓ | ✓ | ✓ |
 | Rust | ✓ | ✓ | ✓ | partial |
 | Go | ✓ | ✓ | ✓ | partial |
+| Markdown | ✓ | ✓ | — | — |
 
 ---
 
@@ -469,7 +523,7 @@ opencode-aft/
 │   └── aft/              # Rust binary (tree-sitter core)
 │       └── src/
 ├── packages/
-│   ├── opencode-plugin/  # TypeScript OpenCode plugin (@aft/opencode)
+│   ├── opencode-plugin/  # TypeScript OpenCode plugin (@cortexkit/aft-opencode)
 │   │   └── src/
 │   │       ├── tools/    # One file per tool group
 │   │       ├── config.ts # Config loading and schema

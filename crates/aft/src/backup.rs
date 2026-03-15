@@ -50,7 +50,15 @@ impl BackupStore {
             description: description.to_string(),
         };
 
-        self.entries.entry(key).or_default().push(entry);
+        let stack = self.entries.entry(key).or_default();
+        // Cap per-file undo depth to prevent unbounded memory growth.
+        // Glob edits can touch hundreds of files, and repeated edits to large
+        // files would otherwise accumulate full-content copies indefinitely.
+        const MAX_UNDO_DEPTH: usize = 20;
+        if stack.len() >= MAX_UNDO_DEPTH {
+            stack.remove(0); // evict oldest
+        }
+        stack.push(entry);
         Ok(id)
     }
 

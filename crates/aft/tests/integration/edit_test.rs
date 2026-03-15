@@ -565,13 +565,13 @@ fn batch_line_range_edit() {
     let content = "line zero\nline one\nline two\nline three\n";
     fs::write(&target, content).unwrap();
 
-    // Replace line 1 (0-indexed) with new content
+    // Replace line 2 (1-indexed, i.e. "line one") with new content
     let req = serde_json::json!({
         "id": "b-3",
         "command": "batch",
         "file": target.display().to_string(),
         "edits": [
-            { "line_start": 1, "line_end": 1, "content": "replaced line\n" }
+            { "line_start": 2, "line_end": 2, "content": "replaced line\n" }
         ]
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
@@ -644,6 +644,144 @@ fn batch_with_undo() {
     assert_eq!(restored, original, "undo should restore original content");
 
     let _ = fs::remove_file(&target);
+    let status = aft.shutdown();
+    assert!(status.success());
+}
+
+// ============================================================================
+// glob edit_match tests
+// ============================================================================
+
+#[test]
+fn edit_match_glob_replaces_across_files() {
+    let mut aft = AftProcess::spawn();
+    let dir = tempfile::tempdir().unwrap();
+    let dir_path = dir.path();
+
+    fs::write(dir_path.join("a.ts"), "const x = \"OLD_VALUE\";\n").unwrap();
+    fs::write(
+        dir_path.join("b.ts"),
+        "const y = \"OLD_VALUE\";\nconst z = \"OLD_VALUE\";\n",
+    )
+    .unwrap();
+    fs::write(dir_path.join("c.json"), "{\"key\": \"OLD_VALUE\"}\n").unwrap();
+
+    let req = serde_json::json!({
+        "id": "glob-1",
+        "command": "edit_match",
+        "file": format!("{}/**/*.ts", dir_path.display()),
+        "match": "OLD_VALUE",
+        "replacement": "NEW_VALUE"
+    });
+    let resp = aft.send(&serde_json::to_string(&req).unwrap());
+
+    assert_eq!(resp["ok"], true, "glob edit should succeed: {:?}", resp);
+    assert_eq!(resp["total_files"], 2, "should match 2 .ts files");
+    assert_eq!(
+        resp["total_replacements"], 3,
+        "should replace 3 occurrences"
+    );
+    assert!(resp["files"].is_array(), "should have files array");
+    assert_eq!(resp["files"].as_array().unwrap().len(), 2);
+
+    let a_content = fs::read_to_string(dir_path.join("a.ts")).unwrap();
+    assert!(
+        a_content.contains("NEW_VALUE"),
+        "a.ts should have NEW_VALUE"
+    );
+    assert!(
+        !a_content.contains("OLD_VALUE"),
+        "a.ts should not have OLD_VALUE"
+    );
+
+    let b_content = fs::read_to_string(dir_path.join("b.ts")).unwrap();
+    assert_eq!(b_content.matches("NEW_VALUE").count(), 2);
+
+    let c_content = fs::read_to_string(dir_path.join("c.json")).unwrap();
+    assert!(
+        c_content.contains("OLD_VALUE"),
+        "c.json should be unchanged"
+    );
+
+    let status = aft.shutdown();
+    assert!(status.success());
+}
+
+#[test]
+fn edit_match_glob_dry_run() {
+    let mut aft = AftProcess::spawn();
+    let dir = tempfile::tempdir().unwrap();
+    let dir_path = dir.path();
+
+    fs::write(dir_path.join("x.ts"), "const a = \"foo\";\n").unwrap();
+    fs::write(
+        dir_path.join("y.ts"),
+        "const b = \"foo\";\nconst c = \"foo\";\n",
+    )
+    .unwrap();
+
+    let req = serde_json::json!({
+        "id": "glob-dry-1",
+        "command": "edit_match",
+        "file": format!("{}/*.ts", dir_path.display()),
+        "match": "foo",
+        "replacement": "bar",
+        "dry_run": true
+    });
+    let resp = aft.send(&serde_json::to_string(&req).unwrap());
+
+    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["dry_run"], true);
+    assert_eq!(resp["total_files"], 2);
+    assert_eq!(resp["total_replacements"], 3);
+
+    let x_content = fs::read_to_string(dir_path.join("x.ts")).unwrap();
+    assert!(x_content.contains("foo"), "dry_run should not modify files");
+
+    let status = aft.shutdown();
+    assert!(status.success());
+}
+
+#[test]
+fn edit_match_glob_no_matches_in_files() {
+    let mut aft = AftProcess::spawn();
+    let dir = tempfile::tempdir().unwrap();
+    let dir_path = dir.path();
+
+    fs::write(dir_path.join("a.ts"), "const x = 1;\n").unwrap();
+
+    let req = serde_json::json!({
+        "id": "glob-nomatch-1",
+        "command": "edit_match",
+        "file": format!("{}/*.ts", dir_path.display()),
+        "match": "NONEXISTENT",
+        "replacement": "whatever"
+    });
+    let resp = aft.send(&serde_json::to_string(&req).unwrap());
+
+    assert_eq!(resp["ok"], false);
+
+    let status = aft.shutdown();
+    assert!(status.success());
+}
+
+#[test]
+fn edit_match_glob_no_files_matched() {
+    let mut aft = AftProcess::spawn();
+    let dir = tempfile::tempdir().unwrap();
+    let dir_path = dir.path();
+
+    let req = serde_json::json!({
+        "id": "glob-nofiles-1",
+        "command": "edit_match",
+        "file": format!("{}/*.xyz", dir_path.display()),
+        "match": "something",
+        "replacement": "else"
+    });
+    let resp = aft.send(&serde_json::to_string(&req).unwrap());
+
+    assert_eq!(resp["ok"], false);
+
     let status = aft.shutdown();
     assert!(status.success());
 }

@@ -13,7 +13,9 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
     aft_outline: {
       description:
         "Get a structural outline of a source file — lists all top-level symbols with their kind, name, line range, and visibility. Use this to understand file structure before editing. " +
-        "Supports single file (via 'file') or multiple files in one call (via 'files' array).",
+        "Supports single file (via 'file') or multiple files in one call (via 'files' array).\n" +
+        "Each entry includes 'name', 'kind' (function/class/struct/heading/etc), 'range', 'signature', and 'members' (nested children like methods in classes or sub-headings in markdown).\n" +
+        "For Markdown files (.md, .mdx): returns heading hierarchy — h1/h2/h3 as nested symbols with section ranges covering all content until the next same-level heading.",
       args: {
         file: z
           .string()
@@ -39,11 +41,13 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
 
     aft_zoom: {
       description:
-        "Deep-inspect a single symbol — returns its full source, surrounding context lines, and call-graph annotations (calls_out, called_by). Use after outline to study a specific function or type.\n" +
+        "Deep-inspect symbols or read arbitrary line ranges from a source file.\n" +
+        "Returns full source, surrounding context lines, and call-graph annotations (calls_out, called_by) for code symbols.\n" +
         "Supports three access patterns:\n" +
-        "- 'symbol': Inspect a named symbol (function, class, type)\n" +
+        "- 'symbol': Inspect a named symbol (function, class, type, or markdown heading)\n" +
         "- 'symbols': Inspect multiple symbols in one call — returns an array of results\n" +
-        "- 'start_line' + 'end_line': Read arbitrary line range (1-based) without needing a symbol name",
+        "- 'start_line' + 'end_line': Read arbitrary line range (1-based) without needing a symbol name\n" +
+        "For Markdown: use heading text as symbol name (e.g. symbol='Architecture') to read entire section.",
       args: {
         file: z.string().describe("Path to the source file containing the symbol"),
         symbol: z.string().optional().describe("Name of a single symbol to inspect"),

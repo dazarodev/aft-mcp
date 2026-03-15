@@ -1,5 +1,5 @@
 {
-  "name": "@aft/darwin-x64",
+  "name": "@cortexkit/aft-darwin-x64",
   "version": "0.1.0",
   "description": "AFT binary for macOS x64 (Intel)",
   "os": ["darwin"],
@@ -11,6 +11,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nichochar/opencode-sfm"
+    "url": "https://github.com/ualtinok/aft"
   }
 }

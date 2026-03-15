@@ -171,7 +171,7 @@ pub fn handle_move_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
                 serde_json::json!({
                     "name": sym.name,
                     "qualified": qualified,
-                    "line": sym.range.start_line,
+                    "line": sym.range.start_line + 1,
                     "kind": kind_str,
                 })
             })

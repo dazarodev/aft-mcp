@@ -22,7 +22,7 @@ use crate::protocol::{RawRequest, Response};
 /// Params:
 ///   - `file` (string, required) — target file path
 ///   - `symbol` (string, required) — name of the function to inline
-///   - `call_site_line` (u32, required) — line where the call expression is (0-indexed)
+///   - `call_site_line` (u32, required) — line where the call expression is (1-based)
 ///   - `dry_run` (bool, optional) — if true, return diff without writing
 ///
 /// Returns on success:
@@ -59,7 +59,14 @@ pub fn handle_inline_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
     };
 
     let call_site_line = match req.params.get("call_site_line").and_then(|v| v.as_u64()) {
-        Some(l) => l as u32,
+        Some(l) if l >= 1 => (l - 1) as u32,
+        Some(_) => {
+            return Response::error(
+                &req.id,
+                "invalid_request",
+                "inline_symbol: 'call_site_line' must be >= 1 (1-based)",
+            );
+        }
         None => {
             return Response::error(
                 &req.id,
@@ -937,7 +944,7 @@ mod tests {
             serde_json::json!({
                 "file": file.display().to_string(),
                 "symbol": "main",
-                "call_site_line": 0,
+                "call_site_line": 1,
             }),
         );
         let ctx = crate::context::AppContext::new(
@@ -964,7 +971,7 @@ mod tests {
             serde_json::json!({
                 "file": fixture.display().to_string(),
                 "symbol": "multiReturn",
-                "call_site_line": 8,
+                "call_site_line": 9,
             }),
         );
         let ctx = crate::context::AppContext::new(
@@ -990,7 +997,7 @@ mod tests {
             serde_json::json!({
                 "file": fixture.display().to_string(),
                 "symbol": "compute",
-                "call_site_line": 8,
+                "call_site_line": 9,
                 "dry_run": true,
             }),
         );
@@ -1028,7 +1035,7 @@ mod tests {
             serde_json::json!({
                 "file": fixture.display().to_string(),
                 "symbol": "add",
-                "call_site_line": 10,
+                "call_site_line": 11,
                 "dry_run": true,
             }),
         );

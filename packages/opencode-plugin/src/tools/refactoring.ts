@@ -15,8 +15,8 @@ export function refactoringTools(ctx: PluginContext): Record<string, ToolDefinit
         "Workspace-wide refactoring operations that update imports and references across files.\n" +
         "Ops:\n" +
         "- 'move': Move a symbol to another file, updating all imports workspace-wide. Needs 'symbol', 'destination'. Creates a checkpoint before mutating.\n" +
-        "- 'extract': Extract a line range into a new function with auto-detected parameters. Needs 'name', 'start_line', 'end_line'. Supports TS/JS/TSX and Python.\n" +
-        "- 'inline': Replace a function call with the function's body, substituting args for params. Needs 'symbol', 'call_site_line'. Validates single-return constraint.\n" +
+        "- 'extract': Extract a line range into a new function with auto-detected parameters. Needs 'name', 'start_line', 'end_line' (all 1-based). Supports TS/JS/TSX and Python.\n" +
+        "- 'inline': Replace a function call with the function's body, substituting args for params. Needs 'symbol', 'call_site_line' (1-based). Validates single-return constraint.\n" +
         "All ops need 'file'. Use dry_run to preview.",
       args: {
         op: z.enum(["move", "extract", "inline"]).describe("Refactoring operation"),
@@ -36,12 +36,12 @@ export function refactoringTools(ctx: PluginContext): Record<string, ToolDefinit
           .describe("Disambiguation scope when multiple symbols share the same name (move op)"),
         // extract
         name: z.string().optional().describe("Name for the new extracted function (extract op)"),
-        start_line: z.number().describe("First line of range to extract, 0-indexed (extract op)"),
-        end_line: z.number().describe("Last line of range, exclusive, 0-indexed (extract op)"),
+        start_line: z.number().describe("First line of range to extract, 1-based (extract op)"),
+        end_line: z.number().describe("Last line of range, exclusive, 1-based (extract op)"),
         // inline
         call_site_line: z
           .number()
-          .describe("Line where the call expression is located, 0-indexed (inline op)"),
+          .describe("Line where the call expression is located, 1-based (inline op)"),
         // common
         dry_run: z.boolean().optional().describe("Preview as diff without modifying files"),
       },

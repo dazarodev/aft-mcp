@@ -1,5 +1,5 @@
 {
-  "name": "@aft/linux-arm64",
+  "name": "@cortexkit/aft-linux-arm64",
   "version": "0.1.0",
   "description": "AFT binary for Linux ARM64",
   "os": ["linux"],
@@ -11,6 +11,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nichochar/opencode-sfm"
+    "url": "https://github.com/ualtinok/aft"
   }
 }

@@ -45,7 +45,7 @@ export function platformKey(
 /**
  * Locate the `aft` binary synchronously by checking (in order):
  * 1. Cached binary from previous auto-download (~/.cache/aft/bin/)
- * 2. npm platform package via `require.resolve(@aft/<platform>/bin/aft)`
+ * 2. npm platform package via `require.resolve(@cortexkit/aft-<platform>/bin/aft)`
  * 3. PATH lookup via `which aft` (or `where aft` on Windows)
  * 4. ~/.cargo/bin/aft (Rust cargo install location)
  *
@@ -61,7 +61,7 @@ export function findBinarySync(): string | null {
   // 2. Check npm platform package
   try {
     const key = platformKey();
-    const packageBin = `@aft/${key}/bin/aft${ext}`;
+    const packageBin = `@cortexkit/aft-${key}/bin/aft${ext}`;
     const resolved = require.resolve(packageBin);
     if (existsSync(resolved)) return resolved;
   } catch {
@@ -92,7 +92,7 @@ export function findBinarySync(): string | null {
  *
  * Resolution order:
  *   1. Cached binary (~/.cache/aft/bin/)
- *   2. npm platform package (@aft/<platform>)
+ *   2. npm platform package (@cortexkit/aft-<platform>)
  *   3. PATH lookup (which aft)
  *   4. ~/.cargo/bin/aft
  *   5. Auto-download from GitHub releases
@@ -117,13 +117,13 @@ export async function findBinary(): Promise<string> {
       "",
       "Attempted sources:",
       "  - Cache directory (~/.cache/aft/bin/)",
-      "  - npm platform package (@aft/<platform>)",
+      "  - npm platform package (@cortexkit/aft-<platform>)",
       "  - PATH lookup (which aft)",
       "  - ~/.cargo/bin/aft",
       "  - Auto-download from GitHub releases (failed)",
       "",
       "Install it using one of these methods:",
-      "  npm install @aft/opencode        # installs platform-specific binary via npm",
+      "  npm install @cortexkit/aft-opencode        # installs platform-specific binary via npm",
       "  cargo install aft             # from crates.io",
       "  cargo build --release         # from source (binary at target/release/aft)",
       "",

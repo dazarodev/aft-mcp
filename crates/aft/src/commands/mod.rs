@@ -3,6 +3,8 @@ pub mod add_derive;
 pub mod add_import;
 pub mod add_member;
 pub mod add_struct_tags;
+pub mod ast_replace;
+pub mod ast_search;
 pub mod batch;
 pub mod call_tree;
 pub mod callers;

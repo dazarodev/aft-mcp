@@ -23,8 +23,8 @@ use crate::protocol::{RawRequest, Response};
 /// Params:
 ///   - `file` (string, required) — target file path
 ///   - `name` (string, required) — name for the new function
-///   - `start_line` (u32, required) — first line of the range to extract (0-indexed)
-///   - `end_line` (u32, required) — last line (exclusive) of the range to extract
+///   - `start_line` (u32, required) — first line of the range to extract (1-based)
+///   - `end_line` (u32, required) — last line (exclusive, 1-based) of the range to extract
 ///   - `dry_run` (bool, optional) — if true, return diff without writing
 ///
 /// Returns on success:
@@ -57,8 +57,15 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
-    let start_line = match req.params.get("start_line").and_then(|v| v.as_u64()) {
-        Some(l) => l as u32,
+    let start_line_1based = match req.params.get("start_line").and_then(|v| v.as_u64()) {
+        Some(l) if l >= 1 => l as u32,
+        Some(_) => {
+            return Response::error(
+                &req.id,
+                "invalid_request",
+                "extract_function: 'start_line' must be >= 1 (1-based)",
+            );
+        }
         None => {
             return Response::error(
                 &req.id,
@@ -67,9 +74,17 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
             );
         }
     };
+    let start_line = start_line_1based - 1;
 
-    let end_line = match req.params.get("end_line").and_then(|v| v.as_u64()) {
-        Some(l) => l as u32,
+    let end_line_1based = match req.params.get("end_line").and_then(|v| v.as_u64()) {
+        Some(l) if l >= 1 => l as u32,
+        Some(_) => {
+            return Response::error(
+                &req.id,
+                "invalid_request",
+                "extract_function: 'end_line' must be >= 1 (1-based)",
+            );
+        }
         None => {
             return Response::error(
                 &req.id,
@@ -78,6 +93,7 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
             );
         }
     };
+    let end_line = end_line_1based - 1;
 
     if start_line >= end_line {
         return Response::error(
@@ -521,8 +537,8 @@ mod tests {
             serde_json::json!({
                 "file": file.display().to_string(),
                 "name": "foo",
-                "start_line": 0,
-                "end_line": 1,
+                "start_line": 1,
+                "end_line": 2,
             }),
         );
         let ctx = crate::context::AppContext::new(
@@ -550,8 +566,8 @@ mod tests {
             serde_json::json!({
                 "file": file.display().to_string(),
                 "name": "foo",
-                "start_line": 5,
-                "end_line": 3,
+                "start_line": 6,
+                "end_line": 4,
             }),
         );
         let ctx = crate::context::AppContext::new(
@@ -577,8 +593,8 @@ mod tests {
             serde_json::json!({
                 "file": fixture.display().to_string(),
                 "name": "extracted",
-                "start_line": 4,
-                "end_line": 7,
+                "start_line": 5,
+                "end_line": 8,
             }),
         );
         let ctx = crate::context::AppContext::new(
@@ -602,8 +618,8 @@ mod tests {
             serde_json::json!({
                 "file": fixture.display().to_string(),
                 "name": "computeResult",
-                "start_line": 14,
-                "end_line": 16,
+                "start_line": 15,
+                "end_line": 17,
                 "dry_run": true,
             }),
         );

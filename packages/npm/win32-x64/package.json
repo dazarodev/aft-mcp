@@ -1,5 +1,5 @@
 {
-  "name": "@aft/win32-x64",
+  "name": "@cortexkit/aft-win32-x64",
   "version": "0.1.0",
   "description": "AFT binary for Windows x64",
   "os": ["win32"],
@@ -11,6 +11,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nichochar/opencode-sfm"
+    "url": "https://github.com/ualtinok/aft"
   }
 }

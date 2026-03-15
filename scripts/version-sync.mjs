@@ -143,7 +143,7 @@ for (const dir of PLATFORM_DIRS) {
   results.push(updateJsonFile(filePath, version, {}, dryRun));
 }
 
-// 6: @aft/opencode
+// 6: @cortexkit/aft-opencode
 const corePath = join(root, "packages", "opencode-plugin", "package.json");
 results.push(updateJsonFile(corePath, version, { optionalDependencies: true }, dryRun));
 

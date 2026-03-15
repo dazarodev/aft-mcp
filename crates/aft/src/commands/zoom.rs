@@ -161,10 +161,10 @@ pub fn handle_zoom(req: &RawRequest, ctx: &AppContext) -> Response {
                     "name": format!("lines {}-{}", start, end),
                     "kind": "lines",
                     "range": {
-                        "start_line": start,
-                        "start_col": 0,
-                        "end_line": end,
-                        "end_col": end_col,
+                        "start_line": start,  // already 1-based from user input
+                        "start_col": 1,
+                        "end_line": end,      // already 1-based from user input
+                        "end_col": end_col + 1,
                     },
                     "content": content,
                     "context_before": context_before,

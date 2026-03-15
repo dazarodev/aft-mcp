@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# release.sh — Tag and push a new AFT release
+#
+# Usage:
+#   ./scripts/release.sh 0.2.0        # release v0.2.0
+#   ./scripts/release.sh 0.2.0 --dry  # preview without committing/pushing
+#
+# What it does:
+#   1. Validates the version is semver
+#   2. Checks for clean working tree (no uncommitted changes)
+#   3. Syncs version across all 7 package files
+#   4. Commits the version bump
+#   5. Creates a git tag (v0.2.0)
+#   6. Pushes commit + tag to origin
+#   7. CI takes over: test → build → publish npm + GitHub release
+
+VERSION="${1:-}"
+DRY="${2:-}"
+
+if [[ -z "$VERSION" ]]; then
+  echo "Usage: ./scripts/release.sh <version> [--dry]"
+  echo "  e.g. ./scripts/release.sh 0.2.0"
+  exit 1
+fi
+
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$ ]]; then
+  echo "Error: '$VERSION' is not valid semver (expected X.Y.Z)"
+  exit 1
+fi
+
+TAG="v$VERSION"
+
+# Check if tag already exists
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+  echo "Error: tag '$TAG' already exists"
+  exit 1
+fi
+
+# Check for clean working tree
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Error: working tree is not clean — commit or stash changes first"
+  git status --short
+  exit 1
+fi
+
+# Check we're on main
+BRANCH=$(git branch --show-current)
+if [[ "$BRANCH" != "main" ]]; then
+  echo "Warning: releasing from '$BRANCH' (not main)"
+  read -rp "Continue? [y/N] " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "Aborted."
+    exit 1
+  fi
+fi
+
+echo ""
+echo "  Releasing AFT $TAG"
+echo "  ─────────────────────"
+echo ""
+
+# Step 1: Sync versions
+if [[ "$DRY" == "--dry" ]]; then
+  echo "→ Version sync (dry run):"
+  node scripts/version-sync.mjs "$VERSION" --dry-run
+  echo ""
+  echo "[DRY RUN] Would commit, tag $TAG, and push to origin."
+  exit 0
+fi
+
+echo "→ Syncing versions to $VERSION..."
+node scripts/version-sync.mjs "$VERSION"
+echo ""
+
+# Step 2: Commit
+echo "→ Committing version bump..."
+git add -A
+git commit -m "release: $TAG"
+echo ""
+
+# Step 3: Tag
+echo "→ Creating tag $TAG..."
+git tag -a "$TAG" -m "Release $TAG"
+echo ""
+
+# Step 4: Push
+echo "→ Pushing to origin..."
+git push origin "$BRANCH"
+git push origin "$TAG"
+echo ""
+
+echo "  ✓ Released $TAG"
+echo "  → GitHub Actions will now: test → build → publish"
+echo "  → Watch: https://github.com/ualtinok/aft/actions"

@@ -9,6 +9,7 @@ import { readingTools } from "./tools/reading.js";
 import { refactoringTools } from "./tools/refactoring.js";
 import { safetyTools } from "./tools/safety.js";
 import { structureTools } from "./tools/structure.js";
+import { astTools } from "./tools/ast.js";
 import type { PluginContext } from "./types.js";
 
 /**
@@ -26,6 +27,7 @@ import type { PluginContext } from "./types.js";
  * - Structure: aft_transform
  * - Navigation: aft_navigate
  * - Refactoring: aft_refactor
+ * - AST Search: aft_ast_search, aft_ast_replace
  */
 const plugin: Plugin = async (input) => {
   const binaryPath = await findBinary();
@@ -53,6 +55,7 @@ const plugin: Plugin = async (input) => {
       ...importTools(ctx),
       ...structureTools(ctx),
       ...navigationTools(ctx),
+      ...astTools(ctx),
       ...refactoringTools(ctx),
     },
     dispose: () => pool.shutdown(),

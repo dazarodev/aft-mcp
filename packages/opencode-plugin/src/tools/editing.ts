@@ -32,10 +32,10 @@ export function editingTools(ctx: PluginContext): Record<string, ToolDefinition>
       description:
         "Edit files with tree-sitter precision. All modes auto-backup before changes and support dry_run.\n" +
         "Modes:\n" +
-        "- 'symbol': Edit a named symbol (function, class, type) — preferred for code changes. Needs 'symbol', 'operation' (replace/delete/insert_before/insert_after), and 'content'.\n" +
-        "- 'match': Find and replace text by content match — use for config values, strings, unnamed code. Needs 'match', 'replacement'. Set replace_all=true to replace ALL occurrences at once. Returns ambiguous_match if multiple hits without occurrence or replace_all.\n" +
+        "- 'symbol': Edit a named symbol (function, class, type) — preferred for code changes. Needs 'symbol', 'operation' (replace/delete/insert_before/insert_after), and 'content'. Response includes context_before/context_after (3 lines each) to detect duplication.\n" +
+        "- 'match': Find and replace text by content match — use for config values, strings, unnamed code. Needs 'match', 'replacement'. Set replace_all=true to replace ALL occurrences at once. Returns ambiguous_match if multiple hits without occurrence or replace_all. For multi-line matching, use actual newlines in the JSON string value. Supports glob patterns in 'file' (e.g. '**/*.ts') to replace across multiple files at once — returns {files: [...], total_replacements, total_files}.\n" +
         "- 'write': Write full file content — for new files or complete rewrites. Needs 'content'.\n" +
-        "- 'batch': Multiple edits in one file atomically — each edit is a match/replace or line-range. Needs 'edits' array.\n" +
+        "- 'batch': Multiple edits in one file atomically — each edit is {match, replacement} or {line_start, line_end, content} (1-based, inclusive). Supports per-edit 'occurrence' for disambiguation. Set content to empty string to delete lines entirely. line_start == total_lines+1 appends at EOF. line_end is auto-clamped to last line (safe to overshoot).\n" +
         "- 'transaction': Atomic multi-file edits with rollback — if any file fails, all revert. Needs 'operations' array of {file, command, ...}.\n" +
         "Returns formatted, validation_errors, backup_id.",
       args: {

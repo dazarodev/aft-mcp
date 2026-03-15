@@ -1089,7 +1089,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn detect_formatter_rust_when_rustfmt_available() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
@@ -1291,7 +1290,6 @@ mod tests {
         assert_eq!(reason.as_deref(), Some("unsupported_language"));
     }
 
-    #[test]
     #[test]
     fn detect_type_checker_rust() {
         let dir = tempfile::tempdir().unwrap();

@@ -1,5 +1,5 @@
 {
-  "name": "@aft/opencode",
+  "name": "@cortexkit/aft-opencode",
   "version": "0.1.0",
   "type": "module",
   "description": "OpenCode plugin for Agent File Tools (AFT) — tree-sitter powered code analysis",
@@ -8,13 +8,18 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nichochar/opencode-sfm"
+    "url": "https://github.com/ualtinok/aft"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "pretest": "cd ../.. && cargo build",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "tsc"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.2.26",
@@ -22,11 +27,11 @@
     "zod": "^4.1.8"
   },
   "optionalDependencies": {
-    "@aft/darwin-arm64": "0.1.0",
-    "@aft/darwin-x64": "0.1.0",
-    "@aft/linux-arm64": "0.1.0",
-    "@aft/linux-x64": "0.1.0",
-    "@aft/win32-x64": "0.1.0"
+    "@cortexkit/aft-darwin-arm64": "0.1.0",
+    "@cortexkit/aft-darwin-x64": "0.1.0",
+    "@cortexkit/aft-linux-arm64": "0.1.0",
+    "@cortexkit/aft-linux-x64": "0.1.0",
+    "@cortexkit/aft-win32-x64": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
