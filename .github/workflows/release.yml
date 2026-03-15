@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -165,8 +166,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure latest npm (for trusted publishing)
+        run: npm install -g npm@latest
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -221,18 +225,20 @@ jobs:
       - name: Build plugin
         run: bun run build
 
+      # TODO: After first publish, configure Trusted Publishing on npmjs.com
+      # for all 6 packages, then remove NODE_AUTH_TOKEN and keep only --provenance
       - name: Publish platform packages
         run: |
-          npm publish packages/npm/darwin-arm64 --access public
-          npm publish packages/npm/darwin-x64 --access public
-          npm publish packages/npm/linux-arm64 --access public
-          npm publish packages/npm/linux-x64 --access public
-          npm publish packages/npm/win32-x64 --access public
+          npm publish packages/npm/darwin-arm64 --access public --provenance
+          npm publish packages/npm/darwin-x64 --access public --provenance
+          npm publish packages/npm/linux-arm64 --access public --provenance
+          npm publish packages/npm/linux-x64 --access public --provenance
+          npm publish packages/npm/win32-x64 --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @cortexkit/aft-opencode
-        run: npm publish packages/opencode-plugin --access public
+        run: npm publish packages/opencode-plugin --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
