@@ -243,17 +243,12 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
         metadata: { filepath: filePath },
       });
 
-      // Read before content for diff
-      let beforeContent = "";
-      try {
-        beforeContent = fs.readFileSync(filePath, "utf-8");
-      } catch { /* file doesn't exist yet */ }
-
       const data = await bridge.send("write", {
         file: filePath,
         content,
         create_dirs: true,
         diagnostics: true,
+        include_diff: true,
       });
 
       let output = data.created ? "Created new file." : "File updated.";
@@ -271,13 +266,8 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
         }
       }
 
-      // Compute diff for UI
-      const afterContent = content;
-      const beforeLines = beforeContent.split("\n");
-      const afterLines = afterContent.split("\n");
-      const additions = afterLines.filter((l, i) => l !== (beforeLines[i] ?? "")).length;
-      const deletions = beforeLines.filter((l, i) => l !== (afterLines[i] ?? "")).length;
-
+      // Use diff from Rust for UI metadata (no extra file reads needed)
+      const diff = data.diff as { before?: string; after?: string; additions?: number; deletions?: number } | undefined;
       context.metadata({
         title: relPath,
         metadata: {
@@ -288,10 +278,10 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
             file: relPath,
             path: relPath,
             filePath: relPath,
-            before: beforeContent,
-            after: afterContent,
-            additions,
-            deletions,
+            before: diff?.before ?? "",
+            after: diff?.after ?? content,
+            additions: diff?.additions ?? 0,
+            deletions: diff?.deletions ?? 0,
           },
         },
       });
@@ -420,12 +410,6 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
         metadata: { filepath: filePath },
       });
 
-      // Read before content for UI diff
-      let beforeContent = "";
-      try {
-        beforeContent = fs.readFileSync(filePath, "utf-8");
-      } catch { /* file may not exist for write mode */ }
-
       const params: Record<string, unknown> = { file: filePath };
 
       // Route to appropriate Rust command
@@ -459,21 +443,14 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
 
       if (args.dry_run) params.dry_run = true;
       if (args.diagnostics) params.diagnostics = true;
+      // Request diff from Rust for UI metadata (avoids extra file reads in TS)
+      if (!args.dry_run) params.include_diff = true;
 
       const data = await bridge.send(command, params);
 
-      // Set UI metadata for non-dry-run edits
-      if (!args.dry_run && data.ok) {
-        let afterContent = beforeContent;
-        try {
-          afterContent = fs.readFileSync(filePath, "utf-8");
-        } catch { /* ignore */ }
-
-        const beforeLines = beforeContent.split("\n");
-        const afterLines = afterContent.split("\n");
-        const additions = afterLines.filter((l, i) => l !== (beforeLines[i] ?? "")).length;
-        const deletions = beforeLines.filter((l, i) => l !== (afterLines[i] ?? "")).length;
-
+      // Set UI metadata using diff from Rust
+      if (!args.dry_run && data.ok && data.diff) {
+        const diff = data.diff as { before?: string; after?: string; additions?: number; deletions?: number };
         context.metadata({
           title: relPath,
           metadata: {
@@ -484,10 +461,10 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
               file: relPath,
               path: relPath,
               filePath: relPath,
-              before: beforeContent,
-              after: afterContent,
-              additions,
-              deletions,
+              before: diff.before ?? "",
+              after: diff.after ?? "",
+              additions: diff.additions ?? 0,
+              deletions: diff.deletions ?? 0,
             },
           },
         });

@@ -109,6 +109,55 @@ pub fn is_dry_run(params: &serde_json::Value) -> bool {
         .unwrap_or(false)
 }
 
+/// Check if the caller requested diff info in the response.
+pub fn wants_diff(params: &serde_json::Value) -> bool {
+    params
+        .get("include_diff")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
+
+/// Compute diff info between before/after content for UI metadata.
+/// Returns a JSON value with before, after, additions, deletions.
+/// For files >512KB, omits full content and returns only counts.
+pub fn compute_diff_info(before: &str, after: &str) -> serde_json::Value {
+    let before_lines: Vec<&str> = before.lines().collect();
+    let after_lines: Vec<&str> = after.lines().collect();
+
+    let max_len = before_lines.len().max(after_lines.len());
+    let mut additions = 0usize;
+    let mut deletions = 0usize;
+    for i in 0..max_len {
+        let bl = before_lines.get(i).copied().unwrap_or("");
+        let al = after_lines.get(i).copied().unwrap_or("");
+        if bl != al {
+            if i < before_lines.len() {
+                deletions += 1;
+            }
+            if i < after_lines.len() {
+                additions += 1;
+            }
+        }
+    }
+
+    // For large files, skip sending full content to avoid bloating JSON
+    let size_limit = 512 * 1024; // 512KB
+    if before.len() > size_limit || after.len() > size_limit {
+        serde_json::json!({
+            "additions": additions,
+            "deletions": deletions,
+            "truncated": true,
+        })
+    } else {
+        serde_json::json!({
+            "before": before,
+            "after": after,
+            "additions": additions,
+            "deletions": deletions,
+        })
+    }
+}
+
 /// Snapshot the file into the backup store before mutation.
 ///
 /// Returns `Ok(Some(backup_id))` if the file existed and was backed up,

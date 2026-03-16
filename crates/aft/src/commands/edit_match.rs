@@ -454,6 +454,13 @@ fn handle_single_file_edit_match(
     }
 
     write_result.append_lsp_diagnostics_to(&mut result);
+
+    // Include diff info if requested (for UI metadata)
+    if edit::wants_diff(&req.params) {
+        let final_content = std::fs::read_to_string(path).unwrap_or_else(|_| new_source);
+        result["diff"] = edit::compute_diff_info(&source, &final_content);
+    }
+
     Response::success(&req.id, result)
 }
 
