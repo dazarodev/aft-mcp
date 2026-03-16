@@ -2,6 +2,8 @@
 // Auto-detection picks up biome.json (TS/JS) and Cargo.toml (Rust) from root.
 // This file makes it explicit and enables post-edit formatting/checking.
 {
+  "hoist_builtin_tools": true,
+
   // Format files automatically after every aft_edit operation
   "format_on_edit": true,
 

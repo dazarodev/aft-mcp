@@ -8,18 +8,55 @@
  * All file operations go through AFT's Rust binary for better performance,
  * backup tracking, formatting, and inline diagnostics.
  */
+
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { ToolDefinition } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
-import type { PluginContext } from "../types.js";
-import { parsePatch, applyUpdateChunks } from "../patch-parser.js";
 import { storeToolMetadata } from "../metadata-store.js";
-import * as path from "node:path";
-import * as fs from "node:fs";
+import { applyUpdateChunks, parsePatch } from "../patch-parser.js";
+import type { PluginContext } from "../types.js";
 
 /** Extract callID from plugin context (exists on object but not in TS type). */
 function getCallID(ctx: unknown): string | undefined {
   const c = ctx as { callID?: string; callId?: string; call_id?: string };
   return c.callID ?? c.callId ?? c.call_id;
+}
+
+/** Get relative path matching opencode's format — the desktop UI parses it to extract filename + dir. */
+function relativeToWorktree(fp: string, worktree: string): string {
+  return path.relative(worktree, fp);
+}
+
+/** Build a simple unified diff string from before/after content. */
+function buildUnifiedDiff(fp: string, before: string, after: string): string {
+  const beforeLines = before.split("\n");
+  const afterLines = after.split("\n");
+  let diff = `Index: ${fp}\n===================================================================\n--- ${fp}\n+++ ${fp}\n`;
+  let firstChange = -1;
+  let lastChange = -1;
+  const maxLen = Math.max(beforeLines.length, afterLines.length);
+  for (let i = 0; i < maxLen; i++) {
+    if ((beforeLines[i] ?? "") !== (afterLines[i] ?? "")) {
+      if (firstChange === -1) firstChange = i;
+      lastChange = i;
+    }
+  }
+  if (firstChange === -1) return diff;
+  const ctxStart = Math.max(0, firstChange - 2);
+  const ctxEnd = Math.min(maxLen - 1, lastChange + 2);
+  diff += `@@ -${ctxStart + 1},${Math.min(beforeLines.length, ctxEnd + 1) - ctxStart} +${ctxStart + 1},${Math.min(afterLines.length, ctxEnd + 1) - ctxStart} @@\n`;
+  for (let i = ctxStart; i <= ctxEnd; i++) {
+    const bl = i < beforeLines.length ? beforeLines[i] : undefined;
+    const al = i < afterLines.length ? afterLines[i] : undefined;
+    if (bl === al) {
+      diff += ` ${bl}\n`;
+    } else {
+      if (bl !== undefined) diff += `-${bl}\n`;
+      if (al !== undefined) diff += `+${al}\n`;
+    }
+  }
+  return diff;
 }
 
 const z = tool.schema;
@@ -33,25 +70,25 @@ const READ_DESCRIPTION = `Read files, directories, or inspect code symbols with 
 
 **Modes** (determined by which parameters you provide):
 
-1. **Read file** (default) — pass \`file\` only
+1. **Read file** (default) — pass \`filePath\` only
    Returns line-numbered content. Use \`start_line\`/\`end_line\` to read specific sections.
-   Example: \`{ "file": "src/app.ts" }\` or \`{ "file": "src/app.ts", "start_line": 50, "end_line": 100 }\`
+   Example: \`{ "filePath": "src/app.ts" }\` or \`{ "filePath": "src/app.ts", "start_line": 50, "end_line": 100 }\`
 
-2. **Inspect symbol** — pass \`file\` + \`symbol\`
+2. **Inspect symbol** — pass \`filePath\` + \`symbol\`
    Returns the full source of a named symbol (function, class, type) with call-graph
    annotations showing what it calls and what calls it. Includes surrounding context lines.
-   Example: \`{ "file": "src/app.ts", "symbol": "handleRequest" }\`
+   Example: \`{ "filePath": "src/app.ts", "symbol": "handleRequest" }\`
 
-3. **Inspect multiple symbols** — pass \`file\` + \`symbols\` array
+3. **Inspect multiple symbols** — pass \`filePath\` + \`symbols\` array
    Returns multiple symbols in one call. More efficient than separate calls.
-   Example: \`{ "file": "src/app.ts", "symbols": ["Config", "createApp"] }\`
+   Example: \`{ "filePath": "src/app.ts", "symbols": ["Config", "createApp"] }\`
 
-4. **List directory** — pass \`file\` pointing to a directory
+4. **List directory** — pass \`filePath\` pointing to a directory
    Returns sorted entries, directories have trailing \`/\`.
-   Example: \`{ "file": "src/" }\`
+   Example: \`{ "filePath": "src/" }\`
 
 **Parameters:**
-- \`file\` (string, required): Path to file or directory (absolute or relative to project root)
+- \`filePath\` (string, required): Path to file or directory (absolute or relative to project root)
 - \`symbol\` (string): Name of a single symbol to inspect — returns full source + call graph
 - \`symbols\` (string[]): Array of symbol names to inspect in one call
 - \`start_line\` (number): 1-based line to start reading from (default: 1)
@@ -73,7 +110,7 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
   return {
     description: READ_DESCRIPTION,
     args: {
-      file: z.string(),
+      filePath: z.string(),
       symbol: z.string().optional(),
       symbols: z.array(z.string()).optional(),
       start_line: z.number().optional(),
@@ -83,12 +120,10 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
     },
     execute: async (args, context): Promise<string> => {
       const bridge = ctx.pool.getBridge(context.directory);
-      const file = args.file as string;
+      const file = (args.filePath ?? args.file) as string;
 
       // Resolve relative paths
-      const filePath = path.isAbsolute(file)
-        ? file
-        : path.resolve(context.directory, file);
+      const filePath = path.isAbsolute(file) ? file : path.resolve(context.directory, file);
 
       // Permission check
       await context.ask({
@@ -101,10 +136,18 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
       // Image/PDF detection — return metadata for UI preview
       const ext = path.extname(filePath).toLowerCase();
       const mimeMap: Record<string, string> = {
-        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-        ".gif": "image/gif", ".webp": "image/webp", ".bmp": "image/bmp",
-        ".ico": "image/x-icon", ".tiff": "image/tiff", ".tif": "image/tiff",
-        ".avif": "image/avif", ".heic": "image/heic", ".heif": "image/heif",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+        ".ico": "image/x-icon",
+        ".tiff": "image/tiff",
+        ".tif": "image/tiff",
+        ".avif": "image/avif",
+        ".heic": "image/heic",
+        ".heif": "image/heif",
         ".pdf": "application/pdf",
       };
       const mime = mimeMap[ext];
@@ -113,14 +156,17 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
         const label = isImage ? "Image" : "PDF";
         let fileSize = 0;
         try {
-          const stat = await import("node:fs/promises").then(fs => fs.stat(filePath));
+          const stat = await import("node:fs/promises").then((fs) => fs.stat(filePath));
           fileSize = stat.size;
-        } catch { /* ignore */ }
-        const sizeStr = fileSize > 1024 * 1024
-          ? `${(fileSize / (1024 * 1024)).toFixed(1)}MB`
-          : fileSize > 1024
-            ? `${(fileSize / 1024).toFixed(0)}KB`
-            : `${fileSize} bytes`;
+        } catch {
+          /* ignore */
+        }
+        const sizeStr =
+          fileSize > 1024 * 1024
+            ? `${(fileSize / (1024 * 1024)).toFixed(1)}MB`
+            : fileSize > 1024
+              ? `${(fileSize / 1024).toFixed(0)}KB`
+              : `${fileSize} bytes`;
         const msg = `${label} read successfully`;
         const imgCallID = getCallID(context);
         if (imgCallID) {
@@ -154,7 +200,11 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
 
         const data = await bridge.send("zoom", params);
         const callID = getCallID(context);
-        if (callID) storeToolMetadata(context.sessionID, callID, { title: relPath });
+        if (callID)
+          storeToolMetadata(context.sessionID, callID, {
+            title: relativeToWorktree(filePath, context.worktree),
+            metadata: { title: relativeToWorktree(filePath, context.worktree) },
+          });
         return JSON.stringify(data);
       }
 
@@ -169,7 +219,13 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
 
         const data = await bridge.send("zoom", params);
         const lineCallID = getCallID(context);
-        if (lineCallID) storeToolMetadata(context.sessionID, lineCallID, { title: `${relPath}:${args.start_line}-${args.end_line}` });
+        if (lineCallID) {
+          const dp = relativeToWorktree(filePath, context.worktree);
+          storeToolMetadata(context.sessionID, lineCallID, {
+            title: `${dp}:${args.start_line}-${args.end_line}`,
+            metadata: { title: `${dp}:${args.start_line}-${args.end_line}` },
+          });
+        }
         return JSON.stringify(data);
       }
 
@@ -185,18 +241,27 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
 
       // Directory response
       if (data.entries) {
-        if (readCallID) storeToolMetadata(context.sessionID, readCallID, { title: relPath || file });
+        if (readCallID) {
+          const dp = relativeToWorktree(filePath, context.worktree) || file;
+          storeToolMetadata(context.sessionID, readCallID, { title: dp, metadata: { title: dp } });
+        }
         return (data.entries as string[]).join("\n");
       }
 
       // Binary response
       if (data.binary) {
-        if (readCallID) storeToolMetadata(context.sessionID, readCallID, { title: relPath || file });
+        if (readCallID) {
+          const dp = relativeToWorktree(filePath, context.worktree) || file;
+          storeToolMetadata(context.sessionID, readCallID, { title: dp, metadata: { title: dp } });
+        }
         return data.message as string;
       }
 
       // File content — already line-numbered from Rust
-      if (readCallID) storeToolMetadata(context.sessionID, readCallID, { title: relPath || file });
+      if (readCallID) {
+        const dp = relativeToWorktree(filePath, context.worktree) || file;
+        storeToolMetadata(context.sessionID, readCallID, { title: dp, metadata: { title: dp } });
+      }
       let output = data.content as string;
 
       // Add navigation hint if truncated
@@ -220,7 +285,7 @@ If the project has a formatter configured (biome, prettier, rustfmt, etc.), the 
 is auto-formatted after writing. Returns inline LSP diagnostics when available.
 
 **Parameters:**
-- \`file\` (string, required): Path to the file to write (absolute or relative to project root)
+- \`filePath\` (string, required): Path to the file to write (absolute or relative to project root)
 - \`content\` (string, required): The full content to write to the file
 
 **Behavior:**
@@ -235,17 +300,15 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
   return {
     description: WRITE_DESCRIPTION,
     args: {
-      file: z.string(),
+      filePath: z.string(),
       content: z.string(),
     },
     execute: async (args, context): Promise<string> => {
       const bridge = ctx.pool.getBridge(context.directory);
-      const file = args.file as string;
+      const file = (args.filePath ?? args.file) as string;
       const content = args.content as string;
 
-      const filePath = path.isAbsolute(file)
-        ? file
-        : path.resolve(context.directory, file);
+      const filePath = path.isAbsolute(file) ? file : path.resolve(context.directory, file);
 
       const relPath = path.relative(context.worktree, filePath);
 
@@ -281,24 +344,26 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
       }
 
       // Store metadata for tool.execute.after hook (fromPlugin overwrites context.metadata)
-      const diff = data.diff as { before?: string; after?: string; additions?: number; deletions?: number } | undefined;
+      const diff = data.diff as
+        | { before?: string; after?: string; additions?: number; deletions?: number }
+        | undefined;
       const callID = getCallID(context);
       if (callID) {
+        const dp = relativeToWorktree(filePath, context.worktree);
+        const beforeContent = diff?.before ?? "";
+        const afterContent = diff?.after ?? content;
         storeToolMetadata(context.sessionID, callID, {
-          title: relPath,
+          title: dp,
           metadata: {
-            filePath: relPath,
-            path: relPath,
-            file: relPath,
+            diff: buildUnifiedDiff(filePath, beforeContent, afterContent),
             filediff: {
-              file: relPath,
-              path: relPath,
-              filePath: relPath,
-              before: diff?.before ?? "",
-              after: diff?.after ?? content,
+              file: filePath,
+              before: beforeContent,
+              after: afterContent,
               additions: diff?.additions ?? 0,
               deletions: diff?.deletions ?? 0,
             },
+            diagnostics: {},
           },
         });
       }
@@ -316,42 +381,42 @@ const EDIT_DESCRIPTION = `Edit a file by finding and replacing text, or by targe
 
 **Modes** (determined by which parameters you provide):
 
-1. **Find and replace** — pass \`file\` + \`match\` + \`replacement\`
+1. **Find and replace** — pass \`filePath\` + \`match\` + \`replacement\`
    Finds the exact text in \`match\` and replaces it with \`replacement\`.
    Returns an error if multiple matches are found (use \`occurrence\` to select one,
    or \`replace_all: true\` to replace all).
-   Example: \`{ "file": "src/app.ts", "match": "const x = 1", "replacement": "const x = 2" }\`
+   Example: \`{ "filePath": "src/app.ts", "match": "const x = 1", "replacement": "const x = 2" }\`
 
 2. **Replace all occurrences** — add \`replace_all: true\`
    Replaces every occurrence of \`match\` in the file.
-   Example: \`{ "file": "src/app.ts", "match": "oldName", "replacement": "newName", "replace_all": true }\`
+   Example: \`{ "filePath": "src/app.ts", "match": "oldName", "replacement": "newName", "replace_all": true }\`
 
 3. **Select specific occurrence** — add \`occurrence: N\` (0-indexed)
    When multiple matches exist, select the Nth one (0 = first, 1 = second, etc.).
-   Example: \`{ "file": "src/app.ts", "match": "TODO", "replacement": "DONE", "occurrence": 0 }\`
+   Example: \`{ "filePath": "src/app.ts", "match": "TODO", "replacement": "DONE", "occurrence": 0 }\`
 
-4. **Symbol replace** — pass \`file\` + \`symbol\` + \`content\`
+4. **Symbol replace** — pass \`filePath\` + \`symbol\` + \`content\`
    Replaces an entire named symbol (function, class, type) with new content.
    Includes decorators, attributes, and doc comments in the replacement range.
-   Example: \`{ "file": "src/app.ts", "symbol": "handleRequest", "content": "function handleRequest() { ... }" }\`
+   Example: \`{ "filePath": "src/app.ts", "symbol": "handleRequest", "content": "function handleRequest() { ... }" }\`
 
-5. **Batch edits** — pass \`file\` + \`edits\` array
+5. **Batch edits** — pass \`filePath\` + \`edits\` array
    Multiple edits in one file atomically. Each edit is either:
    - \`{ "match": "old", "replacement": "new" }\` — find/replace
    - \`{ "line_start": 5, "line_end": 7, "content": "new lines" }\` — replace line range (1-based, inclusive)
    Set content to empty string to delete lines.
-   Example: \`{ "file": "src/app.ts", "edits": [{ "match": "foo", "replacement": "bar" }, { "line_start": 10, "line_end": 12, "content": "" }] }\`
+   Example: \`{ "filePath": "src/app.ts", "edits": [{ "match": "foo", "replacement": "bar" }, { "line_start": 10, "line_end": 12, "content": "" }] }\`
 
 6. **Multi-file transaction** — pass \`operations\` array
    Atomic edits across multiple files with rollback on failure.
    Example: \`{ "operations": [{ "file": "a.ts", "command": "write", "content": "..." }, { "file": "b.ts", "command": "edit_match", "match": "x", "replacement": "y" }] }\`
 
-7. **Glob replace** — pass \`file\` as glob pattern (e.g. \`"src/**/*.ts"\`) + \`match\` + \`replacement\`
+7. **Glob replace** — pass \`filePath\` as glob pattern (e.g. \`"src/**/*.ts"\`) + \`match\` + \`replacement\`
    Replaces across all matching files. Must use \`replace_all: true\`.
-   Example: \`{ "file": "src/**/*.ts", "match": "@deprecated", "replacement": "", "replace_all": true }\`
+   Example: \`{ "filePath": "src/**/*.ts", "match": "@deprecated", "replacement": "", "replace_all": true }\`
 
 **Parameters:**
-- \`file\` (string): Path to file, or glob pattern for multi-file operations
+- \`filePath\` (string): Path to file, or glob pattern for multi-file operations
 - \`match\` (string): Text to find (exact match). For multi-line, use actual newlines.
 - \`replacement\` (string): Text to replace with
 - \`replace_all\` (boolean): Replace all occurrences instead of erroring on ambiguity
@@ -373,7 +438,7 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
   return {
     description: EDIT_DESCRIPTION,
     args: {
-      file: z.string().optional(),
+      filePath: z.string().optional(),
       match: z.string().optional(),
       replacement: z.string().optional(),
       replace_all: z.boolean().optional(),
@@ -395,7 +460,9 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
 
         await context.ask({
           permission: "edit",
-          patterns: files.map((f) => path.relative(context.worktree, path.resolve(context.directory, f))),
+          patterns: files.map((f) =>
+            path.relative(context.worktree, path.resolve(context.directory, f)),
+          ),
           always: ["*"],
           metadata: {},
         });
@@ -411,12 +478,10 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
         return JSON.stringify(data);
       }
 
-      const file = args.file as string;
+      const file = (args.filePath ?? args.file) as string;
       if (!file) throw new Error("'file' parameter is required");
 
-      const filePath = path.isAbsolute(file)
-        ? file
-        : path.resolve(context.directory, file);
+      const filePath = path.isAbsolute(file) ? file : path.resolve(context.directory, file);
 
       const relPath = path.relative(context.worktree, filePath);
 
@@ -455,7 +520,9 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
         params.content = args.content;
         params.create_dirs = true;
       } else {
-        throw new Error("Provide 'match' + 'replacement', 'symbol' + 'content', 'edits' array, or 'content' for write");
+        throw new Error(
+          "Provide 'match' + 'replacement', 'symbol' + 'content', 'edits' array, or 'content' for write",
+        );
       }
 
       if (args.dry_run) params.dry_run = true;
@@ -467,24 +534,29 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
 
       // Store metadata for tool.execute.after hook (fromPlugin overwrites context.metadata)
       if (!args.dry_run && data.ok && data.diff) {
-        const diff = data.diff as { before?: string; after?: string; additions?: number; deletions?: number };
+        const diff = data.diff as {
+          before?: string;
+          after?: string;
+          additions?: number;
+          deletions?: number;
+        };
         const callID = getCallID(context);
         if (callID) {
+          const dp = relativeToWorktree(filePath, context.worktree);
+          const beforeContent = diff.before ?? "";
+          const afterContent = diff.after ?? "";
           storeToolMetadata(context.sessionID, callID, {
-            title: relPath,
+            title: dp,
             metadata: {
-              filePath: relPath,
-              path: relPath,
-              file: relPath,
+              diff: buildUnifiedDiff(filePath, beforeContent, afterContent),
               filediff: {
-                file: relPath,
-                path: relPath,
-                filePath: relPath,
-                before: diff.before ?? "",
-                after: diff.after ?? "",
+                file: filePath,
+                before: beforeContent,
+                after: afterContent,
                 additions: diff.additions ?? 0,
                 deletions: diff.deletions ?? 0,
               },
+              diagnostics: {},
             },
           });
         }
@@ -563,10 +635,7 @@ function createApplyPatchTool(ctx: PluginContext): ToolDefinition {
 
       // Resolve all paths and ask permission
       const allPaths = hunks.map((h) =>
-        path.relative(
-          context.worktree,
-          path.resolve(context.directory, h.path),
-        ),
+        path.relative(context.worktree, path.resolve(context.directory, h.path)),
       );
 
       await context.ask({
