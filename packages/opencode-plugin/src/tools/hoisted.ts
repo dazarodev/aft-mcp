@@ -127,6 +127,8 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
         return `${msg} (${ext.slice(1).toUpperCase()}, ${sizeStr}). File: ${filePath}`;
       }
 
+      const relPath = path.relative(context.worktree, filePath);
+
       // Route: symbol/symbols → zoom command, everything else → read command
       const hasSymbol = typeof args.symbol === "string" && args.symbol.length > 0;
       const hasSymbols = Array.isArray(args.symbols) && args.symbols.length > 0;
@@ -141,6 +143,7 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
         if (args.context_lines !== undefined) params.context_lines = args.context_lines;
 
         const data = await bridge.send("zoom", params);
+        context.metadata({ title: relPath });
         return JSON.stringify(data);
       }
 
@@ -154,6 +157,7 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
         if (args.context_lines !== undefined) params.context_lines = args.context_lines;
 
         const data = await bridge.send("zoom", params);
+        context.metadata({ title: `${relPath}:${args.start_line}-${args.end_line}` });
         return JSON.stringify(data);
       }
 
@@ -167,15 +171,18 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
 
       // Directory response
       if (data.entries) {
+        context.metadata({ title: relPath || file });
         return (data.entries as string[]).join("\n");
       }
 
       // Binary response
       if (data.binary) {
+        context.metadata({ title: relPath || file });
         return data.message as string;
       }
 
       // File content — already line-numbered from Rust
+      context.metadata({ title: relPath || file });
       let output = data.content as string;
 
       // Add navigation hint if truncated
@@ -226,13 +233,21 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
         ? file
         : path.resolve(context.directory, file);
 
+      const relPath = path.relative(context.worktree, filePath);
+
       // Permission check
       await context.ask({
         permission: "edit",
-        patterns: [path.relative(context.worktree, filePath)],
+        patterns: [relPath],
         always: ["*"],
         metadata: { filepath: filePath },
       });
+
+      // Read before content for diff
+      let beforeContent = "";
+      try {
+        beforeContent = fs.readFileSync(filePath, "utf-8");
+      } catch { /* file doesn't exist yet */ }
 
       const data = await bridge.send("write", {
         file: filePath,
@@ -255,6 +270,31 @@ function createWriteTool(ctx: PluginContext): ToolDefinition {
           }
         }
       }
+
+      // Compute diff for UI
+      const afterContent = content;
+      const beforeLines = beforeContent.split("\n");
+      const afterLines = afterContent.split("\n");
+      const additions = afterLines.filter((l, i) => l !== (beforeLines[i] ?? "")).length;
+      const deletions = beforeLines.filter((l, i) => l !== (afterLines[i] ?? "")).length;
+
+      context.metadata({
+        title: relPath,
+        metadata: {
+          filePath: relPath,
+          path: relPath,
+          file: relPath,
+          filediff: {
+            file: relPath,
+            path: relPath,
+            filePath: relPath,
+            before: beforeContent,
+            after: afterContent,
+            additions,
+            deletions,
+          },
+        },
+      });
 
       return output;
     },
@@ -371,12 +411,20 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
         ? file
         : path.resolve(context.directory, file);
 
+      const relPath = path.relative(context.worktree, filePath);
+
       await context.ask({
         permission: "edit",
-        patterns: [path.relative(context.worktree, filePath)],
+        patterns: [relPath],
         always: ["*"],
         metadata: { filepath: filePath },
       });
+
+      // Read before content for UI diff
+      let beforeContent = "";
+      try {
+        beforeContent = fs.readFileSync(filePath, "utf-8");
+      } catch { /* file may not exist for write mode */ }
 
       const params: Record<string, unknown> = { file: filePath };
 
@@ -413,6 +461,38 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
       if (args.diagnostics) params.diagnostics = true;
 
       const data = await bridge.send(command, params);
+
+      // Set UI metadata for non-dry-run edits
+      if (!args.dry_run && data.ok) {
+        let afterContent = beforeContent;
+        try {
+          afterContent = fs.readFileSync(filePath, "utf-8");
+        } catch { /* ignore */ }
+
+        const beforeLines = beforeContent.split("\n");
+        const afterLines = afterContent.split("\n");
+        const additions = afterLines.filter((l, i) => l !== (beforeLines[i] ?? "")).length;
+        const deletions = beforeLines.filter((l, i) => l !== (afterLines[i] ?? "")).length;
+
+        context.metadata({
+          title: relPath,
+          metadata: {
+            filePath: relPath,
+            path: relPath,
+            file: relPath,
+            filediff: {
+              file: relPath,
+              path: relPath,
+              filePath: relPath,
+              before: beforeContent,
+              after: afterContent,
+              additions,
+              deletions,
+            },
+          },
+        });
+      }
+
       return JSON.stringify(data);
     },
   };
