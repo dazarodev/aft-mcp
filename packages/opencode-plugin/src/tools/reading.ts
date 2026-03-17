@@ -1,6 +1,21 @@
 import type { ToolDefinition } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
+import { readdir } from "node:fs/promises";
+import { join, resolve, extname } from "node:path";
 import type { PluginContext } from "../types.js";
+
+/** File extensions that aft_outline supports via tree-sitter or markdown parser */
+const OUTLINE_EXTENSIONS = new Set([
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+  ".rs", ".go", ".py", ".rb",
+  ".c", ".cpp", ".h", ".hpp", ".cs",
+  ".java", ".kt", ".scala",
+  ".swift", ".lua", ".ex", ".exs",
+  ".hs", ".sol", ".nix",
+  ".md", ".mdx",
+  ".css", ".html", ".json", ".yaml", ".yml",
+  ".sh", ".bash",
+]);
 
 const z = tool.schema;
 
@@ -12,13 +27,14 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
     aft_outline: {
       description:
         "Get a structural outline of a source file — lists all top-level symbols with their kind, name, line range, and visibility. Use this to understand file structure before editing. " +
-        "Supports single file (via 'file') or multiple files in one call (via 'files' array).\n" +
+        "Supports single file (via 'file'), multiple files in one call (via 'files' array), or an entire directory (via 'directory').\n" +
         "Each entry includes 'name', 'kind' (function/class/struct/heading/etc), 'range', 'signature', and 'members' (nested children like methods in classes or sub-headings in markdown).\n" +
         "For Markdown files (.md, .mdx): returns heading hierarchy — h1/h2/h3 as nested symbols with section ranges covering all content until the next same-level heading.\n\n" +
         "Parameters:\n" +
         "- file (string, optional): Path to a single file to outline (relative to project root or absolute)\n" +
-        "- files (string[], optional): Array of file paths to outline in one call — returns per-file results\n\n" +
-        "Provide either 'file' or 'files', not both. Use 'files' to batch multiple outlines in one tool call.",
+        "- files (string[], optional): Array of file paths to outline in one call — returns per-file results\n" +
+        "- directory (string, optional): Path to a directory — outlines all source files under it recursively\n\n" +
+        "Provide either 'file', 'files', or 'directory', not both. Use 'files' to batch multiple outlines in one tool call.",
       args: {
         file: z
           .string()
@@ -30,9 +46,25 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
           .array(z.string())
           .optional()
           .describe("Array of file paths to outline in one call — returns per-file results"),
+        directory: z
+          .string()
+          .optional()
+          .describe("Path to a directory — outlines all source files under it recursively"),
       },
       execute: async (args, context): Promise<string> => {
         const bridge = ctx.pool.getBridge(context.directory);
+
+        // Directory mode: discover source files recursively and batch outline
+        if (typeof args.directory === "string") {
+          const dirPath = resolve(context.directory, args.directory);
+          const files = await discoverSourceFiles(dirPath);
+          if (files.length === 0) {
+            return JSON.stringify({ success: false, message: `No source files found under ${args.directory}` });
+          }
+          const response = await bridge.send("outline", { files });
+          return JSON.stringify(response);
+        }
+
         if (Array.isArray(args.files) && args.files.length > 0) {
           const response = await bridge.send("outline", { files: args.files });
           return JSON.stringify(response);
@@ -107,4 +139,45 @@ For Markdown files, use heading text as symbol name (e.g., symbol: "Architecture
       },
     },
   };
+}
+
+/** Recursively discover source files under a directory, skipping common noise directories */
+const SKIP_DIRS = new Set([
+  "node_modules", ".git", "dist", "build", "out", ".next", ".nuxt",
+  "target", "__pycache__", ".venv", "venv", "vendor", ".turbo",
+  "coverage", ".nyc_output", ".cache",
+]);
+
+async function discoverSourceFiles(dir: string, maxFiles = 200): Promise<string[]> {
+  const files: string[] = [];
+
+  async function walk(current: string): Promise<void> {
+    if (files.length >= maxFiles) return;
+
+    let entries;
+    try {
+      entries = await readdir(current, { withFileTypes: true });
+    } catch {
+      return; // permission denied, not a directory, etc.
+    }
+
+    for (const entry of entries) {
+      if (files.length >= maxFiles) return;
+
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith(".")) {
+          await walk(join(current, entry.name));
+        }
+      } else if (entry.isFile()) {
+        const ext = extname(entry.name).toLowerCase();
+        if (OUTLINE_EXTENSIONS.has(ext)) {
+          files.push(join(current, entry.name));
+        }
+      }
+    }
+  }
+
+  await walk(dir);
+  files.sort();
+  return files;
 }
