@@ -48,7 +48,7 @@ fn configure(aft: &mut AftProcess, root: &str) {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true, "configure should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "configure should succeed: {:?}", resp);
 }
 
 // ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ fn move_symbol_basic() {
         source, dest
     ));
 
-    assert_eq!(resp["ok"], true, "move_symbol should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "move_symbol should succeed: {:?}", resp);
     assert!(
         resp["files_modified"].as_u64().unwrap() >= 2,
         "at least source + dest should be modified"
@@ -148,7 +148,7 @@ fn move_symbol_multiple_consumers() {
         source, dest
     ));
 
-    assert_eq!(resp["ok"], true, "move should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "move should succeed: {:?}", resp);
 
     // consumer_a.ts — same dir, imports only formatDate
     // Should: import { formatDate } from './utils'
@@ -234,7 +234,7 @@ fn move_symbol_aliased_import() {
         source, dest
     ));
 
-    assert_eq!(resp["ok"], true, "move should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "move should succeed: {:?}", resp);
 
     // consumer_c uses: import { formatDate as fmtDate } from './service';
     // After move, should be: import { formatDate as fmtDate } from './utils';
@@ -283,7 +283,7 @@ fn move_symbol_dry_run() {
         source, dest
     ));
 
-    assert_eq!(resp["ok"], true, "dry_run should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "dry_run should succeed: {:?}", resp);
     assert_eq!(resp["dry_run"], true, "response should flag dry_run");
 
     // Should have diffs for source, dest, and at least one consumer
@@ -349,7 +349,7 @@ fn move_symbol_checkpoint() {
         r#"{{"id":"1","command":"move_symbol","file":"{}","symbol":"formatDate","destination":"{}"}}"#,
         source, dest
     ));
-    assert_eq!(resp["ok"], true, "move should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "move should succeed: {:?}", resp);
     let checkpoint_name = resp["checkpoint_name"].as_str().unwrap().to_string();
 
     // Verify list_checkpoints shows it
@@ -423,7 +423,7 @@ fn move_symbol_not_configured() {
         source, dest
     ));
 
-    assert_eq!(resp["ok"], false, "should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "should fail: {:?}", resp);
     assert_eq!(resp["code"], "not_configured");
 
     aft.shutdown();
@@ -444,7 +444,7 @@ fn move_symbol_symbol_not_found() {
         source, dest
     ));
 
-    assert_eq!(resp["ok"], false, "should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "should fail: {:?}", resp);
     assert_eq!(resp["code"], "symbol_not_found");
 
     aft.shutdown();
@@ -467,7 +467,7 @@ fn move_symbol_non_top_level() {
     ));
 
     assert_eq!(
-        resp["ok"], false,
+        resp["success"], false,
         "should fail for class method: {:?}",
         resp
     );
@@ -506,7 +506,7 @@ fn move_symbol_file_not_found() {
         root, dest
     ));
 
-    assert_eq!(resp["ok"], false, "should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "should fail: {:?}", resp);
     assert_eq!(resp["code"], "file_not_found");
 
     aft.shutdown();

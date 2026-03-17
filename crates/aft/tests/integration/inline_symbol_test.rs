@@ -31,7 +31,11 @@ fn configure(aft: &mut AftProcess, root: &str) {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true, "configure should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "configure should succeed: {:?}",
+        resp
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +57,7 @@ fn inline_symbol_basic_ts() {
         file
     ));
 
-    assert_eq!(resp["ok"], true, "inline should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "inline should succeed: {:?}", resp);
     assert_eq!(resp["symbol"], "add");
     assert_eq!(resp["call_context"], "assignment");
     assert!(
@@ -88,7 +92,7 @@ fn inline_symbol_expression_body() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "inline expression body should succeed: {:?}",
         resp
     );
@@ -120,7 +124,11 @@ fn inline_symbol_python() {
         file
     ));
 
-    assert_eq!(resp["ok"], true, "python inline should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "python inline should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["symbol"], "add");
 
     // Verify call was replaced
@@ -151,7 +159,7 @@ fn inline_symbol_dry_run() {
         file
     ));
 
-    assert_eq!(resp["ok"], true, "dry_run should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "dry_run should succeed: {:?}", resp);
     assert_eq!(resp["dry_run"], true, "should flag dry_run");
     assert!(resp["diff"].as_str().is_some(), "should have diff");
     assert_eq!(resp["call_context"], "assignment");
@@ -183,7 +191,7 @@ fn inline_symbol_multiple_returns() {
         file
     ));
 
-    assert_eq!(resp["ok"], false, "should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "should fail: {:?}", resp);
     assert_eq!(resp["code"], "multiple_returns");
     assert!(
         resp["return_count"].as_u64().unwrap() >= 2,
@@ -209,7 +217,7 @@ fn inline_symbol_scope_conflict() {
     ));
 
     assert_eq!(
-        resp["ok"], false,
+        resp["success"], false,
         "should fail with scope_conflict: {:?}",
         resp
     );

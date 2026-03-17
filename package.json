@@ -1,6 +1,6 @@
 {
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/*", "benchmarks"],
   "scripts": {
     "build": "bun run --filter '*' build",
     "build:rust": "cargo build --release",
@@ -11,7 +11,8 @@
     "format:check": "biome format . && cargo fmt --check",
     "test": "bun run --filter '*' test",
     "test:rust": "cargo test",
-    "version-sync": "node scripts/version-sync.mjs"
+    "version-sync": "node scripts/version-sync.mjs",
+    "bench": "bun run benchmarks/src/runner.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.7"

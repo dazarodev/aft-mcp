@@ -27,7 +27,7 @@ fn transaction_success_three_files() {
         f1.display(), f2.display(), f3.display()
     ));
 
-    assert_eq!(resp["ok"], true, "transaction should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "transaction should succeed: {:?}", resp);
     assert_eq!(resp["files_modified"], 3);
 
     let results = resp["results"].as_array().expect("results array");
@@ -74,7 +74,7 @@ fn transaction_rollback_syntax_error() {
         f1.display(), f2.display(), f3.display()
     ));
 
-    assert_eq!(resp["ok"], false, "transaction should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "transaction should fail: {:?}", resp);
     assert_eq!(resp["code"], "transaction_failed");
     assert_eq!(
         resp["failed_operation"], 2,
@@ -141,7 +141,7 @@ fn transaction_rollback_new_file() {
         existing.display(), new_file.display(), bad_file.display()
     ));
 
-    assert_eq!(resp["ok"], false, "transaction should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "transaction should fail: {:?}", resp);
     assert_eq!(resp["code"], "transaction_failed");
 
     // Existing file restored
@@ -184,7 +184,7 @@ fn transaction_edit_match_operation() {
         f1.display(), f2.display()
     ));
 
-    assert_eq!(resp["ok"], true, "transaction should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "transaction should succeed: {:?}", resp);
     assert_eq!(resp["files_modified"], 2);
 
     assert_eq!(
@@ -224,7 +224,7 @@ fn transaction_dry_run() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "dry-run transaction should succeed: {:?}",
         resp
     );
@@ -288,7 +288,7 @@ fn transaction_empty_operations() {
 
     let resp = aft.send(r#"{"id":"txn-empty","command":"transaction","operations":[]}"#);
 
-    assert_eq!(resp["ok"], false, "empty ops should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "empty ops should fail: {:?}", resp);
     assert_eq!(resp["code"], "invalid_request");
     assert!(
         resp["message"]

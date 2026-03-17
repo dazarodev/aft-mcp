@@ -33,17 +33,17 @@ fn test_checkpoint_create_restore_cycle() {
         r#"{{"id":"snap-a","command":"snapshot","file":"{}"}}"#,
         file_a.display()
     ));
-    assert_eq!(resp["ok"], true, "snapshot a: {:?}", resp);
+    assert_eq!(resp["success"], true, "snapshot a: {:?}", resp);
 
     let resp = aft.send(&format!(
         r#"{{"id":"snap-b","command":"snapshot","file":"{}"}}"#,
         file_b.display()
     ));
-    assert_eq!(resp["ok"], true, "snapshot b: {:?}", resp);
+    assert_eq!(resp["success"], true, "snapshot b: {:?}", resp);
 
     // Create checkpoint (no explicit files → uses tracked files from backup store)
     let resp = aft.send(r#"{"id":"cp-create","command":"checkpoint","name":"safe-point"}"#);
-    assert_eq!(resp["ok"], true, "checkpoint create: {:?}", resp);
+    assert_eq!(resp["success"], true, "checkpoint create: {:?}", resp);
     assert_eq!(resp["name"], "safe-point");
     assert!(resp["file_count"].as_u64().unwrap() >= 2);
 
@@ -56,7 +56,7 @@ fn test_checkpoint_create_restore_cycle() {
     // Restore checkpoint
     let resp =
         aft.send(r#"{"id":"cp-restore","command":"restore_checkpoint","name":"safe-point"}"#);
-    assert_eq!(resp["ok"], true, "restore: {:?}", resp);
+    assert_eq!(resp["success"], true, "restore: {:?}", resp);
     assert_eq!(resp["name"], "safe-point");
 
     // Verify files match original content
@@ -89,7 +89,7 @@ fn test_undo_restores_previous_version() {
         r#"{{"id":"snap-1","command":"snapshot","file":"{}"}}"#,
         file.display()
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     // Overwrite externally
     fs::write(&file, "version-2").unwrap();
@@ -100,7 +100,7 @@ fn test_undo_restores_previous_version() {
         r#"{{"id":"undo-1","command":"undo","file":"{}"}}"#,
         file.display()
     ));
-    assert_eq!(resp["ok"], true, "undo: {:?}", resp);
+    assert_eq!(resp["success"], true, "undo: {:?}", resp);
     assert!(resp["backup_id"].is_string());
     assert_eq!(
         fs::read_to_string(&file).unwrap(),
@@ -146,7 +146,7 @@ fn test_edit_history_returns_stack() {
         r#"{{"id":"hist","command":"edit_history","file":"{}"}}"#,
         file.display()
     ));
-    assert_eq!(resp["ok"], true, "edit_history: {:?}", resp);
+    assert_eq!(resp["success"], true, "edit_history: {:?}", resp);
 
     let entries = resp["entries"].as_array().expect("entries array");
     assert_eq!(entries.len(), 3, "should have 3 history entries");
@@ -178,7 +178,7 @@ fn test_list_checkpoints() {
         r#"{{"id":"cp1","command":"checkpoint","name":"first","files":["{}"]}}"#,
         file_a.display()
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     // Create checkpoint with 2 files
     let resp = aft.send(&format!(
@@ -186,11 +186,11 @@ fn test_list_checkpoints() {
         file_a.display(),
         file_b.display()
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     // List checkpoints
     let resp = aft.send(r#"{"id":"list","command":"list_checkpoints"}"#);
-    assert_eq!(resp["ok"], true, "list_checkpoints: {:?}", resp);
+    assert_eq!(resp["success"], true, "list_checkpoints: {:?}", resp);
 
     let checkpoints = resp["checkpoints"].as_array().expect("checkpoints array");
     assert_eq!(checkpoints.len(), 2);
@@ -225,7 +225,7 @@ fn test_undo_no_history_error() {
         r#"{{"id":"undo-err","command":"undo","file":"{}"}}"#,
         file.display()
     ));
-    assert_eq!(resp["ok"], false, "undo should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "undo should fail: {:?}", resp);
     assert_eq!(resp["code"], "no_undo_history");
     assert!(resp["message"]
         .as_str()
@@ -242,7 +242,7 @@ fn test_undo_no_history_error() {
 
     // Process should still be alive
     let resp = aft.send(r#"{"id":"alive-1","command":"ping"}"#);
-    assert_eq!(resp["ok"], true, "process should survive error");
+    assert_eq!(resp["success"], true, "process should survive error");
 
     let status = aft.shutdown();
     assert!(status.success());
@@ -254,13 +254,13 @@ fn test_restore_nonexistent_checkpoint() {
 
     // Restore a checkpoint that doesn't exist → error
     let resp = aft.send(r#"{"id":"rc-err","command":"restore_checkpoint","name":"ghost"}"#);
-    assert_eq!(resp["ok"], false, "restore should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "restore should fail: {:?}", resp);
     assert_eq!(resp["code"], "checkpoint_not_found");
     assert!(resp["message"].as_str().unwrap().contains("ghost"));
 
     // Process should still be alive
     let resp = aft.send(r#"{"id":"alive-2","command":"ping"}"#);
-    assert_eq!(resp["ok"], true, "process should survive error");
+    assert_eq!(resp["success"], true, "process should survive error");
 
     let status = aft.shutdown();
     assert!(status.success());
@@ -282,7 +282,7 @@ fn test_checkpoint_overwrite() {
         r#"{{"id":"ow1","command":"checkpoint","name":"reusable","files":["{}"]}}"#,
         file_a.display()
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["file_count"], 1);
 
     // Modify files
@@ -295,7 +295,7 @@ fn test_checkpoint_overwrite() {
         file_a.display(),
         file_b.display()
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["file_count"], 2);
 
     // Modify files again
@@ -304,14 +304,14 @@ fn test_checkpoint_overwrite() {
 
     // Restore → should get v2 content (the second checkpoint), not v1
     let resp = aft.send(r#"{"id":"ow-restore","command":"restore_checkpoint","name":"reusable"}"#);
-    assert_eq!(resp["ok"], true, "restore: {:?}", resp);
+    assert_eq!(resp["success"], true, "restore: {:?}", resp);
 
     assert_eq!(fs::read_to_string(&file_a).unwrap(), "a-v2");
     assert_eq!(fs::read_to_string(&file_b).unwrap(), "b-v2");
 
     // Process should still be alive after all this
     let resp = aft.send(r#"{"id":"alive-3","command":"ping"}"#);
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     let status = aft.shutdown();
     assert!(status.success());

@@ -25,7 +25,7 @@ describe("BinaryBridge lifecycle", () => {
 
     const response = await bridge.send("ping");
 
-    expect(response.ok).toBe(true);
+    expect(response.success).toBe(true);
     expect(response.command).toBe("pong");
     expect(bridge.isAlive()).toBe(true);
   });
@@ -41,11 +41,11 @@ describe("BinaryBridge lifecycle", () => {
     const r3 = await bridge.send("ping");
 
     // All should succeed with correct command
-    expect(r1.ok).toBe(true);
+    expect(r1.success).toBe(true);
     expect(r1.command).toBe("pong");
-    expect(r2.ok).toBe(true);
+    expect(r2.success).toBe(true);
     expect(r2.command).toBe("pong");
-    expect(r3.ok).toBe(true);
+    expect(r3.success).toBe(true);
     expect(r3.command).toBe("pong");
 
     // IDs should be unique (ascending)
@@ -61,7 +61,7 @@ describe("BinaryBridge lifecycle", () => {
 
     // First request to ensure the process is running
     const r1 = await bridge.send("ping");
-    expect(r1.ok).toBe(true);
+    expect(r1.success).toBe(true);
 
     // Kill the child process to simulate a crash
     // Access the private process field via bracket notation for testing
@@ -75,7 +75,7 @@ describe("BinaryBridge lifecycle", () => {
 
     // Next request should work — bridge auto-restarted
     const r2 = await bridge.send("ping");
-    expect(r2.ok).toBe(true);
+    expect(r2.success).toBe(true);
     expect(bridge.restartCount).toBeGreaterThanOrEqual(1);
   });
 
@@ -86,7 +86,7 @@ describe("BinaryBridge lifecycle", () => {
 
     // Ensure process is alive
     const r = await bridge.send("ping");
-    expect(r.ok).toBe(true);
+    expect(r.success).toBe(true);
 
     const proc = (bridge as any).process;
     const pid = proc?.pid;
@@ -108,7 +108,7 @@ describe("BinaryBridge lifecycle", () => {
 
     // Start the process
     const r = await bridge.send("ping");
-    expect(r.ok).toBe(true);
+    expect(r.success).toBe(true);
 
     // Kill it
     const proc = (bridge as any).process;

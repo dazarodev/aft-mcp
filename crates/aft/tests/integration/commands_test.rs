@@ -13,7 +13,7 @@ fn test_outline_typescript_nested_structure() {
     ));
 
     assert_eq!(resp["id"], "ol-1");
-    assert_eq!(resp["ok"], true, "outline should succeed");
+    assert_eq!(resp["success"], true, "outline should succeed");
 
     let entries = resp["entries"].as_array().expect("entries should be array");
 
@@ -106,7 +106,7 @@ fn test_outline_python_multi_level_nesting() {
         file.display()
     ));
 
-    assert_eq!(resp["ok"], true, "outline should succeed for Python");
+    assert_eq!(resp["success"], true, "outline should succeed for Python");
 
     let entries = resp["entries"].as_array().expect("entries array");
     let top_names: Vec<&str> = entries
@@ -162,13 +162,13 @@ fn test_outline_missing_file() {
     let resp =
         aft.send(r#"{"id":"ol-miss","command":"outline","file":"/nonexistent/path/to/file.ts"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "file_not_found");
     assert!(resp["message"].as_str().unwrap().contains("file not found"));
 
     // Process should still be alive
     let resp = aft.send(r#"{"id":"alive","command":"ping"}"#);
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     let status = aft.shutdown();
     assert!(status.success());
@@ -180,7 +180,7 @@ fn test_outline_missing_param() {
 
     let resp = aft.send(r#"{"id":"ol-nop","command":"outline"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "invalid_request");
     assert!(resp["message"].as_str().unwrap().contains("file"));
 
@@ -203,7 +203,7 @@ fn test_zoom_success_with_annotations() {
     ));
 
     assert_eq!(resp["id"], "z-1");
-    assert_eq!(resp["ok"], true, "zoom should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "zoom should succeed: {:?}", resp);
     assert_eq!(resp["name"], "compute");
     assert_eq!(resp["kind"], "function");
 
@@ -283,13 +283,13 @@ fn test_zoom_symbol_not_found() {
         file.display()
     ));
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "symbol_not_found");
     assert!(resp["message"].as_str().unwrap().contains("nonexistent_fn"));
 
     // Process should still be alive
     let resp = aft.send(r#"{"id":"alive","command":"ping"}"#);
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     let status = aft.shutdown();
     assert!(status.success());
@@ -306,7 +306,7 @@ fn test_zoom_context_lines_param() {
         file.display()
     ));
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     let ctx_before = resp["context_before"].as_array().unwrap();
     let ctx_after = resp["context_after"].as_array().unwrap();
@@ -336,7 +336,7 @@ fn test_zoom_empty_annotations_arrays() {
         file.display()
     ));
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     // called_by must be empty array, not null
     let called_by = resp["annotations"]["called_by"]

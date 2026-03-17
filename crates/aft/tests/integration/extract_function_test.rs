@@ -31,7 +31,11 @@ fn configure(aft: &mut AftProcess, root: &str) {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true, "configure should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "configure should succeed: {:?}",
+        resp
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -55,7 +59,7 @@ fn extract_function_basic_ts() {
         file
     ));
 
-    assert_eq!(resp["ok"], true, "extract should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "extract should succeed: {:?}", resp);
     assert_eq!(resp["name"], "doProcess");
 
     // Should detect free variables from the enclosing function scope
@@ -98,7 +102,7 @@ fn extract_function_with_return_value() {
         file
     ));
 
-    assert_eq!(resp["ok"], true, "extract should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "extract should succeed: {:?}", resp);
 
     // Should detect x as a parameter
     let params = resp["parameters"].as_array().expect("parameters array");
@@ -143,7 +147,7 @@ fn extract_function_python() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "python extract should succeed: {:?}",
         resp
     );
@@ -184,7 +188,7 @@ fn extract_function_dry_run() {
         file
     ));
 
-    assert_eq!(resp["ok"], true, "dry_run should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "dry_run should succeed: {:?}", resp);
     assert_eq!(resp["dry_run"], true, "should flag dry_run");
     assert!(resp["diff"].as_str().is_some(), "should have diff");
     assert!(resp["parameters"].is_array(), "should have parameters");
@@ -216,7 +220,7 @@ fn extract_function_unsupported_language() {
         file
     ));
 
-    assert_eq!(resp["ok"], false, "should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "should fail: {:?}", resp);
     assert_eq!(resp["code"], "unsupported_language");
 
     aft.shutdown();
@@ -237,7 +241,7 @@ fn extract_function_this_reference() {
         file
     ));
 
-    assert_eq!(resp["ok"], false, "should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "should fail: {:?}", resp);
     assert_eq!(resp["code"], "this_reference_in_range");
     let msg = resp["message"].as_str().unwrap_or("");
     assert!(

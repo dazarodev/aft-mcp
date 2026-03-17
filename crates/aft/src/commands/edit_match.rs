@@ -137,20 +137,27 @@ fn handle_glob_edit_match(
     let mut total_files: usize = 0;
     let mut diffs: Vec<serde_json::Value> = Vec::new();
 
+    // --- Phase 1: Bulk edit — backup + write all files (fast) ---
+    struct PendingEdit {
+        path: std::path::PathBuf,
+
+        count: usize,
+    }
+    let mut pending: Vec<PendingEdit> = Vec::new();
+
     for path in &paths {
         let source = match std::fs::read_to_string(path) {
             Ok(s) => s,
-            Err(_) => continue, // skip unreadable files
+            Err(_) => continue,
         };
 
-        // Find matches
         let positions: Vec<usize> = source
             .match_indices(match_str)
             .map(|(idx, _)| idx)
             .collect();
 
         if positions.is_empty() {
-            continue; // no matches in this file
+            continue;
         }
 
         let count = positions.len();
@@ -170,38 +177,50 @@ fn handle_glob_edit_match(
             continue;
         }
 
-        // Backup before first mutation
+        // Backup before mutation
         if let Err(e) = edit::auto_backup(ctx, path, &format!("glob_edit_match: {}", match_str)) {
             return Response::error(&req.id, e.code(), e.to_string());
         }
 
-        // Write, format, validate
-        let write_result =
-            match edit::write_format_validate(path, &new_source, &config, &req.params) {
-                Ok(r) => r,
-                Err(e) => {
-                    return Response::error(&req.id, e.code(), e.to_string());
-                }
-            };
-
-        if let Ok(final_content) = std::fs::read_to_string(path) {
-            ctx.lsp_notify_file_changed(path, &final_content);
+        // Write immediately (fast — no formatting yet)
+        if let Err(e) = std::fs::write(path, &new_source) {
+            return Response::error(
+                &req.id,
+                "write_error",
+                format!("failed to write {}: {}", file_str, e),
+            );
         }
 
-        let mut result = serde_json::json!({
-            "file": file_str,
-            "replacements": count,
-            "syntax_valid": write_result.syntax_valid.unwrap_or(true),
-            "formatted": write_result.formatted,
+        pending.push(PendingEdit {
+            path: path.clone(),
+
+            count,
         });
-
-        if let Some(ref reason) = write_result.format_skipped_reason {
-            result["format_skipped_reason"] = serde_json::json!(reason);
-        }
-
-        file_results.push(result);
         total_replacements += count;
         total_files += 1;
+    }
+
+    // --- Phase 2: Format all changed files (after all writes are done) ---
+    for edit in &pending {
+        let file_str = edit.path.display().to_string();
+        let formatted = if !dry_run {
+            match edit::write_format_only(&edit.path, &config) {
+                Ok(true) => true,
+                _ => false,
+            }
+        } else {
+            false
+        };
+
+        if let Ok(final_content) = std::fs::read_to_string(&edit.path) {
+            ctx.lsp_notify_file_changed(&edit.path, &final_content);
+        }
+
+        file_results.push(serde_json::json!({
+            "file": file_str,
+            "replacements": edit.count,
+            "formatted": formatted,
+        }));
     }
 
     if dry_run {

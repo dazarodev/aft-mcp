@@ -5,8 +5,7 @@ import type { PluginContext } from "../types.js";
 const z = tool.schema;
 
 /**
- * Tool definitions for code reading commands: outline only.
- * The zoom/read functionality has been merged into the hoisted `read` tool.
+ * Tool definitions for code reading commands: outline + zoom.
  */
 export function readingTools(ctx: PluginContext): Record<string, ToolDefinition> {
   return {
@@ -40,6 +39,71 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
         }
         const response = await bridge.send("outline", { file: args.file });
         return JSON.stringify(response);
+      },
+    },
+
+    aft_zoom: {
+      description:
+        `Inspect code symbols with call-graph annotations. Returns the full source of named symbols with what they call and what calls them.
+
+Use this when you need to understand a specific function, class, or type in detail — not for reading entire files (use read for that).
+
+**Modes:**
+
+1. **Inspect symbol** — pass filePath + symbol
+   Returns full source + call graph annotations.
+   Example: { "filePath": "src/app.ts", "symbol": "handleRequest" }
+
+2. **Inspect multiple symbols** — pass filePath + symbols array
+   Returns multiple symbols in one call.
+   Example: { "filePath": "src/app.ts", "symbols": ["Config", "createApp"] }
+
+3. **Read line range with context** — pass filePath + start_line + end_line
+   Returns lines with context_before and context_after.
+   Example: { "filePath": "src/app.ts", "start_line": 50, "end_line": 100 }
+
+Parameters:
+- filePath (string, required): Path to file
+- symbol (string): Name of a single symbol to inspect
+- symbols (string[]): Array of symbol names to inspect in one call
+- start_line (number): 1-based start line for line-range mode
+- end_line (number): 1-based end line for line-range mode (required with start_line)
+- context_lines (number): Lines of context around symbols (default: 3)
+
+For Markdown files, use heading text as symbol name (e.g., symbol: "Architecture").`,
+      args: {
+        filePath: z.string(),
+        symbol: z.string().optional(),
+        symbols: z.array(z.string()).optional(),
+        start_line: z.number().optional(),
+        end_line: z.number().optional(),
+        context_lines: z.number().optional(),
+      },
+      execute: async (args, context): Promise<string> => {
+        const bridge = ctx.pool.getBridge(context.directory);
+        const file = args.filePath as string;
+
+        // Multi-symbol mode: make separate zoom calls and combine results
+        if (Array.isArray(args.symbols) && args.symbols.length > 0) {
+          const results = [];
+          for (const sym of args.symbols as string[]) {
+            const params: Record<string, unknown> = { file, symbol: sym };
+            if (args.context_lines !== undefined) params.context_lines = args.context_lines;
+            const data = await bridge.send("zoom", params);
+            results.push(data);
+          }
+          return JSON.stringify(results);
+        }
+
+        // Single symbol or line-range mode
+        const params: Record<string, unknown> = { file };
+        if (typeof args.symbol === "string") params.symbol = args.symbol;
+        if (args.start_line !== undefined) params.start_line = args.start_line;
+        if (args.end_line !== undefined) params.end_line = args.end_line;
+        if (args.context_lines !== undefined) params.context_lines = args.context_lines;
+
+        const data = await bridge.send("zoom", params);
+        return JSON.stringify(data);
       },
     },
   };

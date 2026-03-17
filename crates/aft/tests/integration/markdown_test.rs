@@ -45,7 +45,7 @@ fn markdown_outline_extracts_headings() {
         md_file.display()
     ));
 
-    assert_eq!(resp["ok"], true, "outline should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "outline should succeed: {:?}", resp);
     let entries = resp["entries"].as_array().expect("entries should be array");
 
     // Top-level: 2 h1 sections ("Project Title" and "Appendix")
@@ -94,7 +94,7 @@ fn markdown_outline_section_ranges_cover_content() {
         md_file.display()
     ));
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     let entries = resp["entries"].as_array().unwrap();
 
     // "Features" is a child of the first h1
@@ -127,7 +127,7 @@ fn markdown_zoom_by_heading_name() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "zoom by heading name should work: {:?}",
         resp
     );
@@ -162,7 +162,7 @@ fn markdown_zoom_line_range() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "zoom by line range should work: {:?}",
         resp
     );
@@ -188,7 +188,7 @@ fn markdown_write_preserves_content() {
         new_content
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     let on_disk = fs::read_to_string(&md_file).unwrap();
     assert!(
         on_disk.contains("# New Doc"),
@@ -209,7 +209,7 @@ fn markdown_mdx_extension_supported() {
         mdx_file.display()
     ));
 
-    assert_eq!(resp["ok"], true, "mdx should be supported: {:?}", resp);
+    assert_eq!(resp["success"], true, "mdx should be supported: {:?}", resp);
     let entries = resp["entries"].as_array().unwrap();
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0]["name"], "MDX Doc");

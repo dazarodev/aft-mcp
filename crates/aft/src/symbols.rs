@@ -11,6 +11,8 @@ pub enum SymbolKind {
     Interface,
     Enum,
     TypeAlias,
+    /// Top-level const/let variable declaration
+    Variable,
     /// Markdown heading (h1, h2, h3, etc.)
     Heading,
 }

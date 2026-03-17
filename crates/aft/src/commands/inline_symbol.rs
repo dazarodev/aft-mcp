@@ -886,7 +886,7 @@ mod tests {
         );
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
         let msg = json["message"].as_str().unwrap();
         assert!(
@@ -909,7 +909,7 @@ mod tests {
         );
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
         let msg = json["message"].as_str().unwrap();
         assert!(
@@ -932,7 +932,7 @@ mod tests {
         );
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
     }
 
@@ -958,7 +958,7 @@ mod tests {
         );
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "unsupported_language");
 
         std::fs::remove_dir_all(&dir).ok();
@@ -985,7 +985,7 @@ mod tests {
         );
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "multiple_returns");
         assert!(json["return_count"].as_u64().unwrap() >= 2);
     }
@@ -1013,7 +1013,7 @@ mod tests {
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(
-            json["ok"], false,
+            json["success"], false,
             "should fail with scope_conflict: {:?}",
             json
         );
@@ -1050,7 +1050,7 @@ mod tests {
         );
         let resp = handle_inline_symbol(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], true, "should succeed: {:?}", json);
+        assert_eq!(json["success"], true, "should succeed: {:?}", json);
         assert_eq!(json["dry_run"], true);
         assert!(json["diff"].as_str().is_some(), "should have diff");
         assert_eq!(json["call_context"], "assignment");

@@ -121,22 +121,16 @@ pub fn wants_diff(params: &serde_json::Value) -> bool {
 /// Returns a JSON value with before, after, additions, deletions.
 /// For files >512KB, omits full content and returns only counts.
 pub fn compute_diff_info(before: &str, after: &str) -> serde_json::Value {
-    let before_lines: Vec<&str> = before.lines().collect();
-    let after_lines: Vec<&str> = after.lines().collect();
+    use similar::ChangeTag;
 
-    let max_len = before_lines.len().max(after_lines.len());
+    let diff = similar::TextDiff::from_lines(before, after);
     let mut additions = 0usize;
     let mut deletions = 0usize;
-    for i in 0..max_len {
-        let bl = before_lines.get(i).copied().unwrap_or("");
-        let al = after_lines.get(i).copied().unwrap_or("");
-        if bl != al {
-            if i < before_lines.len() {
-                deletions += 1;
-            }
-            if i < after_lines.len() {
-                additions += 1;
-            }
+    for change in diff.iter_all_changes() {
+        match change.tag() {
+            ChangeTag::Insert => additions += 1,
+            ChangeTag::Delete => deletions += 1,
+            ChangeTag::Equal => {}
         }
     }
 
@@ -157,7 +151,6 @@ pub fn compute_diff_info(before: &str, after: &str) -> serde_json::Value {
         })
     }
 }
-
 /// Snapshot the file into the backup store before mutation.
 ///
 /// Returns `Ok(Some(backup_id))` if the file existed and was backed up,
@@ -372,5 +365,30 @@ mod tests {
         let source = "old content";
         let result = replace_byte_range(source, 0, source.len(), "new content");
         assert_eq!(result, "new content");
+    }
+}
+
+/// Format an already-written file (no re-write) without re-writing or validating.
+/// Returns Ok(true) if formatting was applied, Ok(false) if skipped.
+pub fn write_format_only(path: &Path, config: &Config) -> Result<bool, AftError> {
+    use crate::format::detect_formatter;
+    let lang = match crate::parser::detect_language(path) {
+        Some(l) => l,
+        None => return Ok(false),
+    };
+    let formatter = detect_formatter(path, lang, config);
+    if let Some((cmd, args)) = formatter {
+        let status = std::process::Command::new(&cmd)
+            .args(&args)
+            .arg(path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+        match status {
+            Ok(s) if s.success() => Ok(true),
+            _ => Ok(false),
+        }
+    } else {
+        Ok(false)
     }
 }

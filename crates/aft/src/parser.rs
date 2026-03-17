@@ -45,6 +45,11 @@ const TS_QUERY: &str = r#"
 (type_alias_declaration
   name: (type_identifier) @type_alias.name) @type_alias.def
 
+;; top-level const/let variable declarations
+(lexical_declaration
+  (variable_declarator
+    name: (identifier) @var.name)) @var.def
+
 ;; export statement wrappers (top-level only)
 (export_statement) @export.stmt
 "#;
@@ -70,6 +75,11 @@ const JS_QUERY: &str = r#"
   body: (class_body
     (method_definition
       name: (property_identifier) @method.name) @method.def))
+
+;; top-level const/let variable declarations
+(lexical_declaration
+  (variable_declarator
+    name: (identifier) @var.name)) @var.def
 
 ;; export statement wrappers (top-level only)
 (export_statement) @export.stmt
@@ -461,6 +471,8 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
         let mut enum_def_node = None;
         let mut type_alias_name_node = None;
         let mut type_alias_def_node = None;
+        let mut var_name_node = None;
+        let mut var_def_node = None;
 
         for cap in m.captures {
             let name = capture_names[cap.index as usize];
@@ -480,6 +492,9 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
                 "enum.def" => enum_def_node = Some(cap.node),
                 "type_alias.name" => type_alias_name_node = Some(cap.node),
                 "type_alias.def" => type_alias_def_node = Some(cap.node),
+                "var.name" => var_name_node = Some(cap.node),
+                "var.def" => var_def_node = Some(cap.node),
+                // var.value/var.decl removed — not needed
                 _ => {}
             }
         }
@@ -576,6 +591,28 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
                 exported: is_exported(&def_node, &export_ranges),
                 parent: None,
             });
+        }
+
+        // Top-level const/let variable declaration (not arrow functions — those are handled above)
+        if let (Some(name_node), Some(def_node)) = (var_name_node, var_def_node) {
+            // Only include module-scope variables (parent is program/export_statement, not inside a function)
+            let is_top_level = def_node
+                .parent()
+                .map(|p| p.kind() == "program" || p.kind() == "export_statement")
+                .unwrap_or(false);
+            let name = node_text(source, &name_node).to_string();
+            let already_captured = symbols.iter().any(|s| s.name == name);
+            if is_top_level && !already_captured {
+                symbols.push(Symbol {
+                    name,
+                    kind: SymbolKind::Variable,
+                    range: node_range_with_decorators(&def_node, source, lang),
+                    signature: Some(extract_signature(source, &def_node)),
+                    scope_chain: vec![],
+                    exported: is_exported(&def_node, &export_ranges),
+                    parent: None,
+                });
+            }
         }
     }
 

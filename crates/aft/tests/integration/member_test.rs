@@ -65,7 +65,7 @@ fn add_member_ts_class_last() {
         None, // default "last"
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["scope"], "UserService");
     assert_eq!(resp["syntax_valid"], true);
 
@@ -97,7 +97,7 @@ fn add_member_ts_class_first() {
         Some("first"),
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -131,7 +131,7 @@ fn add_member_ts_after_name() {
         Some("after:constructor"),
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -165,7 +165,7 @@ fn add_member_ts_empty_class() {
         None,
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -192,7 +192,7 @@ fn add_member_py_class_last() {
         None,
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -223,7 +223,7 @@ fn add_member_py_indentation_matches() {
         None,
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
 
     let content = fs::read_to_string(&tmp).unwrap();
 
@@ -259,7 +259,7 @@ fn add_member_rs_struct_field() {
         None, // last
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -291,7 +291,7 @@ fn add_member_rs_impl_method() {
         None,
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -324,7 +324,7 @@ fn add_member_go_struct_field() {
         None, // last
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -349,7 +349,7 @@ fn add_member_go_empty_struct() {
         None,
     );
 
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -376,7 +376,7 @@ fn add_member_scope_not_found() {
         None,
     );
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "scope_not_found");
     // Error message should include available scopes
     let msg = resp["message"].as_str().unwrap();
@@ -401,7 +401,7 @@ fn add_member_member_not_found() {
         Some("after:nonExistentMethod"),
     );
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "member_not_found");
 }
 
@@ -418,7 +418,7 @@ fn add_member_file_not_found() {
         None,
     );
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "file_not_found");
 }
 
@@ -428,11 +428,11 @@ fn add_member_missing_params() {
 
     // Missing scope
     let resp = aft.send(r#"{"id":"1","command":"add_member","file":"/tmp/x.ts","code":"x"}"#);
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "invalid_request");
 
     // Missing code
     let resp = aft.send(r#"{"id":"2","command":"add_member","file":"/tmp/x.ts","scope":"Foo"}"#);
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "invalid_request");
 }

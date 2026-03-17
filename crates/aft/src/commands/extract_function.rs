@@ -478,7 +478,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
         let msg = json["message"].as_str().unwrap();
         assert!(
@@ -501,7 +501,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
         let msg = json["message"].as_str().unwrap();
         assert!(
@@ -524,7 +524,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
     }
 
@@ -552,7 +552,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "unsupported_language");
 
         std::fs::remove_dir_all(&dir).ok();
@@ -581,7 +581,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
 
         std::fs::remove_dir_all(&dir).ok();
@@ -608,7 +608,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "this_reference_in_range");
     }
 
@@ -634,7 +634,7 @@ mod tests {
         );
         let resp = handle_extract_function(&req, &ctx);
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], true);
+        assert_eq!(json["success"], true);
         assert_eq!(json["dry_run"], true);
         assert!(json["diff"].as_str().is_some(), "should have diff");
         assert!(json["parameters"].is_array(), "should have parameters");

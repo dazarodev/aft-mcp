@@ -170,13 +170,19 @@ fn resolve_edit(
     req_id: &str,
 ) -> Result<ResolvedEdit, Response> {
     // Detect edit type: match-replace or line-range
-    if let Some(match_str) = edit_val.get("match").and_then(|v| v.as_str()) {
+    // Accept both "match"/"replacement" and "oldString"/"newString" (backward compat)
+    let match_str = edit_val
+        .get("match")
+        .or_else(|| edit_val.get("oldString"))
+        .and_then(|v| v.as_str());
+
+    if let Some(match_str) = match_str {
         // String match-replace
         let replacement = edit_val
             .get("replacement")
+            .or_else(|| edit_val.get("newString"))
             .and_then(|v| v.as_str())
             .unwrap_or("");
-
         let positions: Vec<usize> = source
             .match_indices(match_str)
             .map(|(idx, _)| idx)

@@ -19,12 +19,12 @@ pub struct RawRequest {
 /// Outbound response envelope.
 ///
 /// `data` is flattened into the top-level JSON object, so a response like
-/// `Response { id: "1", ok: true, data: json!({"command": "pong"}) }`
-/// serializes to `{"id":"1","ok":true,"command":"pong"}`.
+/// `Response { id: "1", success: true, data: json!({"command": "pong"}) }`
+/// serializes to `{"id":"1","success":true,"command":"pong"}`.
 #[derive(Debug, Serialize)]
 pub struct Response {
     pub id: String,
-    pub ok: bool,
+    pub success: bool,
     #[serde(flatten)]
     pub data: serde_json::Value,
 }
@@ -40,7 +40,7 @@ impl Response {
     pub fn success(id: impl Into<String>, data: serde_json::Value) -> Self {
         Response {
             id: id.into(),
-            ok: true,
+            success: true,
             data,
         }
     }
@@ -49,7 +49,7 @@ impl Response {
     pub fn error(id: impl Into<String>, code: &str, message: impl Into<String>) -> Self {
         Response {
             id: id.into(),
-            ok: false,
+            success: false,
             data: serde_json::json!({
                 "code": code,
                 "message": message.into(),
@@ -77,7 +77,7 @@ impl Response {
         }
         Response {
             id: id.into(),
-            ok: false,
+            success: false,
             data,
         }
     }

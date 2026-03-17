@@ -14,7 +14,7 @@ fn edit_symbol_with_lsp_hints_disambiguates() {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         dir.display()
     ));
-    assert_eq!(resp["ok"], true, "configure failed: {:?}", resp);
+    assert_eq!(resp["success"], true, "configure failed: {:?}", resp);
 
     // The fixture has two "process" symbols:
     //   - line 2 (0-indexed): standalone function (lines 2-4)
@@ -27,7 +27,7 @@ fn edit_symbol_with_lsp_hints_disambiguates() {
     ));
 
     // Should succeed — not ambiguous_symbol
-    assert_eq!(resp["ok"], true, "expected success, got: {:?}", resp);
+    assert_eq!(resp["success"], true, "expected success, got: {:?}", resp);
     assert_eq!(resp["symbol"], "process");
 
     aft.shutdown();
@@ -44,7 +44,7 @@ fn edit_symbol_without_lsp_hints_returns_candidates() {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         dir.display()
     ));
-    assert_eq!(resp["ok"], true, "configure failed: {:?}", resp);
+    assert_eq!(resp["success"], true, "configure failed: {:?}", resp);
 
     let resp = aft.send(&format!(
         r#"{{"id":"no-hints","command":"edit_symbol","file":"{}","symbol":"process","operation":"replace","content":"export function process(data: string): string {{\n  return data.toLowerCase();\n}}"}}"#,
@@ -81,7 +81,7 @@ fn edit_symbol_with_malformed_lsp_hints_falls_back() {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         dir.display()
     ));
-    assert_eq!(resp["ok"], true, "configure failed: {:?}", resp);
+    assert_eq!(resp["success"], true, "configure failed: {:?}", resp);
 
     // Malformed: lsp_hints is not the expected schema
     let resp = aft.send(&format!(
@@ -116,7 +116,7 @@ fn zoom_with_lsp_hints_disambiguates() {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         dir.display()
     ));
-    assert_eq!(resp["ok"], true, "configure failed: {:?}", resp);
+    assert_eq!(resp["success"], true, "configure failed: {:?}", resp);
 
     // Zoom into the method version (line 7, inside DataHandler)
     let resp = aft.send(&format!(
@@ -126,7 +126,7 @@ fn zoom_with_lsp_hints_disambiguates() {
     ));
 
     // Should succeed with the method, not an ambiguous error
-    assert_eq!(resp["ok"], true, "expected zoom success, got: {:?}", resp);
+    assert_eq!(resp["success"], true, "expected zoom success, got: {:?}", resp);
     assert_eq!(resp["name"], "process");
 
     aft.shutdown();

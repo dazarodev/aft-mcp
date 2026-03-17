@@ -582,7 +582,7 @@ mod tests {
         let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], true, "zoom should succeed: {:?}", json);
+        assert_eq!(json["success"], true, "zoom should succeed: {:?}", json);
 
         let calls_out = json["annotations"]["calls_out"]
             .as_array()
@@ -620,7 +620,7 @@ mod tests {
         let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], true);
+        assert_eq!(json["success"], true);
 
         let _calls_out = json["annotations"]["calls_out"].as_array().unwrap();
         let called_by = json["annotations"]["called_by"].as_array().unwrap();
@@ -643,7 +643,7 @@ mod tests {
         let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "symbol_not_found");
     }
 
@@ -656,7 +656,7 @@ mod tests {
         let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], true);
+        assert_eq!(json["success"], true);
 
         let ctx_before = json["context_before"].as_array().unwrap();
         let ctx_after = json["context_after"].as_array().unwrap();
@@ -680,7 +680,7 @@ mod tests {
         let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
     }
 
@@ -696,7 +696,7 @@ mod tests {
         let resp = handle_zoom(&req, &ctx);
 
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json["ok"], false);
+        assert_eq!(json["success"], false);
         assert_eq!(json["code"], "invalid_request");
     }
 

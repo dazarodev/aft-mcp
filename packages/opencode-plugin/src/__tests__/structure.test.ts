@@ -148,7 +148,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.scope).toBe("Greeter");
     expect(result.backup_id).toBeDefined();
 
@@ -179,7 +179,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
 
     const content = await readFile(filePath, "utf-8");
     const firstIdx = content.indexOf("first()");
@@ -209,7 +209,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.derives).toContain("Debug");
     expect(result.derives).toContain("Clone");
     expect(result.derives).toContain("PartialEq");
@@ -240,7 +240,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.backup_id).toBeDefined();
 
     const content = await readFile(filePath, "utf-8");
@@ -270,7 +270,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
 
     const content = await readFile(filePath, "utf-8");
     expect(content).toContain("console.error");
@@ -298,7 +298,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.backup_id).toBeDefined();
 
     const content = await readFile(filePath, "utf-8");
@@ -329,7 +329,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.tag_string).toBeDefined();
 
     const content = await readFile(filePath, "utf-8");
@@ -365,7 +365,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(false);
+    expect(result.success).toBe(false);
     expect(result.code).toBe("scope_not_found");
   });
 
@@ -397,7 +397,7 @@ describe("Structure tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(false);
+    expect(result.success).toBe(false);
     expect(result.code).toBe("target_not_found");
   });
 });

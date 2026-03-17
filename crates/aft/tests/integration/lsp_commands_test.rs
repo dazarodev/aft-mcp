@@ -74,7 +74,7 @@ fn test_lsp_hover_returns_content() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     let contents = json["contents"].as_str().expect("contents string");
     assert!(
         contents.contains("const x: number"),
@@ -105,7 +105,7 @@ fn test_lsp_hover_no_info() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     assert!(
         json["contents"].is_null(),
         "expected null contents: {json:#}"
@@ -130,7 +130,7 @@ fn test_lsp_goto_definition_single() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     let definitions = json["definitions"].as_array().expect("definitions array");
     assert_eq!(definitions.len(), 1, "expected 1 definition: {json:#}");
 
@@ -164,7 +164,7 @@ fn test_lsp_find_references_multiple() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     let references = json["references"].as_array().expect("references array");
     assert_eq!(
         references.len(),
@@ -203,7 +203,7 @@ fn test_lsp_find_references_with_declaration() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     let references = json["references"].as_array().expect("references array");
     assert_eq!(
         references.len(),
@@ -236,7 +236,7 @@ fn test_lsp_find_references_defaults_include_declaration_true() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     let references = json["references"].as_array().expect("references array");
     assert_eq!(
         references.len(),

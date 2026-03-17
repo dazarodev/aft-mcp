@@ -222,13 +222,13 @@ fn test_lsp_diagnostics_command_response_format() {
         r#"{{"id":"cfg","command":"configure","project_root":"{}"}}"#,
         root.display()
     ));
-    assert_eq!(configure["ok"], true);
+    assert_eq!(configure["success"], true);
 
     let write = aft.send(&format!(
         r#"{{"id":"write-1","command":"write","file":"{}","content":"fn main() {{ println!(\"hello\"); }}\n"}}"#,
         file.display()
     ));
-    assert_eq!(write["ok"], true, "write failed: {write:?}");
+    assert_eq!(write["success"], true, "write failed: {write:?}");
 
     let resp = aft.send(&format!(
         r#"{{"id":"diag-1","command":"lsp_diagnostics","file":"{}","wait_ms":400}}"#,
@@ -236,7 +236,7 @@ fn test_lsp_diagnostics_command_response_format() {
     ));
 
     assert_eq!(resp["id"], "diag-1");
-    assert_eq!(resp["ok"], true, "response: {resp:?}");
+    assert_eq!(resp["success"], true, "response: {resp:?}");
     assert_eq!(resp["total"], 2);
     assert_eq!(resp["files_with_errors"], 1);
 

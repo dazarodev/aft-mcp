@@ -21,7 +21,11 @@ fn write_dry_run_returns_diff() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "dry_run write should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "dry_run write should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["dry_run"], true, "should flag dry_run: {:?}", resp);
 
     // Diff should be a unified diff
@@ -82,7 +86,7 @@ fn edit_symbol_dry_run() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "dry_run edit_symbol should succeed: {:?}",
         resp
     );
@@ -143,7 +147,7 @@ fn edit_match_dry_run() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "dry_run edit_match should succeed: {:?}",
         resp
     );
@@ -188,7 +192,11 @@ fn batch_dry_run() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "dry_run batch should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "dry_run batch should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["dry_run"], true);
 
     let diff = resp["diff"].as_str().expect("diff should be a string");
@@ -242,7 +250,7 @@ fn add_import_dry_run() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "dry_run add_import should succeed: {:?}",
         resp
     );
@@ -282,7 +290,7 @@ fn dry_run_no_backup() {
         r#"{{"id":"nb-1","command":"write","file":"{}","content":"const x = 2;\n","dry_run":true}}"#,
         target.display()
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["dry_run"], true);
 
     // Check edit_history — should be empty (no backup created)
@@ -291,7 +299,7 @@ fn dry_run_no_backup() {
         target.display()
     ));
     assert_eq!(
-        hist_resp["ok"], true,
+        hist_resp["success"], true,
         "edit_history should succeed: {:?}",
         hist_resp
     );
@@ -328,7 +336,7 @@ fn dry_run_syntax_validation() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "dry_run should succeed even with bad syntax: {:?}",
         resp
     );
@@ -367,7 +375,7 @@ fn dry_run_empty_diff() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "dry_run should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "dry_run should succeed: {:?}", resp);
     assert_eq!(resp["dry_run"], true);
 
     let diff = resp["diff"].as_str().expect("diff should be a string");

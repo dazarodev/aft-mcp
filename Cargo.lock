@@ -4,9 +4,10 @@ version = 4
 
 [[package]]
 name = "agent-file-tools"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ast-grep-core",
+ "content_inspector",
  "crossbeam-channel",
  "glob",
  "ignore",
@@ -107,6 +108,15 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "content_inspector"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bda66e858c683005a53a9a60c69a4aca7eeaa45d124526e389f7aec8e62f38"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "crossbeam-channel"

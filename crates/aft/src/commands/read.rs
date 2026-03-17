@@ -14,12 +14,11 @@ const DEFAULT_LIMIT: u32 = 2000;
 const MAX_LINE_LENGTH: usize = 2000;
 const MAX_BYTES: usize = 50 * 1024; // 50KB output cap
 
-/// Check if file content is binary by scanning for null bytes in first 8KB.
+/// Check if file content is binary using the content_inspector crate.
+/// Detects null bytes, UTF-16 BOMs, and other binary indicators.
 fn is_binary(content: &[u8]) -> bool {
-    let check_len = content.len().min(8192);
-    content[..check_len].contains(&0)
+    content_inspector::inspect(content).is_binary()
 }
-
 /// Handle a `read` request.
 ///
 /// Params:

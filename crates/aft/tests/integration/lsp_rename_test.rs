@@ -117,7 +117,7 @@ fn test_prepare_rename_success() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     assert_eq!(json["can_rename"], true);
     assert_eq!(json["range"]["start_line"], 1);
     assert_eq!(json["range"]["start_column"], 5);
@@ -145,7 +145,7 @@ fn test_rename_applies_changes() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
     assert_eq!(json["renamed"], true);
     assert_eq!(json["total_files"], 1);
     assert_eq!(json["total_edits"], 2);
@@ -180,7 +180,7 @@ fn test_rename_rollback_on_failure() {
     wait_for_server(&ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
 
-    assert_eq!(json["ok"], false, "expected failure: {json:#}");
+    assert_eq!(json["success"], false, "expected failure: {json:#}");
     let current = fs::read_to_string(&main_rs).expect("read rolled back file");
     assert_eq!(current, original);
 
@@ -209,7 +209,7 @@ fn test_rename_notifies_lsp() {
 
     let response = handle_lsp_rename(&req, &ctx);
     let json = serde_json::to_value(&response).expect("response serializes");
-    assert_eq!(json["ok"], true, "expected success: {json:#}");
+    assert_eq!(json["success"], true, "expected success: {json:#}");
 
     let changed = custom_event(&ctx, "custom/documentChanged");
     assert_eq!(changed["uri"], expected_uri);

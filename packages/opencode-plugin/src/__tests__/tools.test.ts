@@ -80,7 +80,7 @@ describe("Tool round-trips", () => {
     const resultStr = await tools.aft_outline.execute({ file: FIXTURE_FILE }, sdkCtx);
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(Array.isArray(result.entries)).toBe(true);
     expect(result.entries.length).toBeGreaterThan(0);
 
@@ -123,7 +123,7 @@ describe("Tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.syntax_valid).toBe(true);
     expect(result.file).toBe(filePath);
 
@@ -158,7 +158,7 @@ describe("Tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.backup_id).toBeDefined();
     expect(typeof result.backup_id).toBe("string");
     expect(result.symbol).toBe("hello");
@@ -199,7 +199,7 @@ describe("Tool round-trips", () => {
         sdkCtx,
       ),
     );
-    expect(editResult.ok).toBe(true);
+    expect(editResult.success).toBe(true);
 
     // Verify file was changed
     let content = await readFile(filePath, "utf-8");
@@ -209,7 +209,7 @@ describe("Tool round-trips", () => {
     const undoResult = JSON.parse(
       await undoTools.aft_safety.execute({ op: "undo", file: filePath }, sdkCtx),
     );
-    expect(undoResult.ok).toBe(true);
+    expect(undoResult.success).toBe(true);
     expect(undoResult.backup_id).toBeDefined();
 
     // Verify file was restored
@@ -243,7 +243,7 @@ describe("Tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.dry_run).toBe(true);
     expect(typeof result.diff).toBe("string");
     expect(result.diff).toContain("-");
@@ -276,7 +276,7 @@ describe("Tool round-trips", () => {
     );
     const result = JSON.parse(resultStr);
 
-    expect(result.ok).toBe(true);
+    expect(result.success).toBe(true);
     expect(result.files_modified).toBe(2);
     expect(Array.isArray(result.results)).toBe(true);
     expect(result.results.length).toBe(2);
@@ -317,7 +317,7 @@ describe("Tool round-trips", () => {
     const result = JSON.parse(resultStr);
 
     // Transaction should fail due to syntax error
-    expect(result.ok).toBe(false);
+    expect(result.success).toBe(false);
     expect(result.code).toBe("transaction_failed");
     expect(Array.isArray(result.rolled_back)).toBe(true);
 
@@ -391,7 +391,7 @@ describe("move_symbol round-trip", () => {
         ),
       );
 
-      expect(moveResult.ok).toBe(true);
+      expect(moveResult.success).toBe(true);
       expect(moveResult.files_modified).toBeGreaterThanOrEqual(2);
 
       // Verify response structure includes expected diagnostic fields
@@ -466,7 +466,7 @@ describe("extract_function round-trip", () => {
         ),
       );
 
-      expect(result.ok).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.dry_run).toBe(true);
       expect(Array.isArray(result.parameters)).toBe(true);
       expect(result.parameters.length).toBeGreaterThan(0);
@@ -528,7 +528,7 @@ describe("inline_symbol round-trip", () => {
         ),
       );
 
-      expect(result.ok).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.symbol).toBe("helper");
       expect(result.call_context).toBe("assignment");
       expect(result.substitutions).toBeGreaterThan(0);

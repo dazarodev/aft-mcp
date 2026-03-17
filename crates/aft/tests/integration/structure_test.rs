@@ -54,7 +54,7 @@ fn add_derive_append_to_existing() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_derive(&mut aft, "d1", file, "User", &["Clone"]);
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -77,7 +77,7 @@ fn add_derive_create_new() {
 
     // Config has no derive attribute
     let resp = send_add_derive(&mut aft, "d2", file, "Config", &["Debug", "Clone"]);
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -97,7 +97,7 @@ fn add_derive_dedup_existing() {
 
     // User already has Debug — adding Debug + Clone should not duplicate Debug
     let resp = send_add_derive(&mut aft, "d3", file, "User", &["Debug", "Clone"]);
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
 
     let derives: Vec<String> = resp["derives"]
         .as_array()
@@ -130,7 +130,7 @@ fn add_derive_enum() {
 
     // Status has #[derive(Debug, Serialize)] — add Clone
     let resp = send_add_derive(&mut aft, "d4", file, "Status", &["Clone"]);
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -149,7 +149,7 @@ fn add_derive_target_not_found() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_derive(&mut aft, "d5", file, "Nonexistent", &["Debug"]);
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "target_not_found");
     aft.shutdown();
 }
@@ -184,7 +184,7 @@ fn wrap_try_catch_simple_function() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_wrap_try_catch(&mut aft, "w1", file, "processData", None);
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -219,7 +219,7 @@ fn wrap_try_catch_method_in_class() {
         "fetch",
         Some("console.error(error);\nthrow error;"),
     );
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -238,7 +238,7 @@ fn wrap_try_catch_target_not_found() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_wrap_try_catch(&mut aft, "w3", file, "nonexistent", None);
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "target_not_found");
     aft.shutdown();
 }
@@ -250,7 +250,7 @@ fn wrap_try_catch_custom_catch_body() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_wrap_try_catch(&mut aft, "w4", file, "processData", Some("return [];"));
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
 
     let content = fs::read_to_string(&tmp).unwrap();
     assert!(content.contains("return [];"), "Expected custom catch body");
@@ -289,7 +289,7 @@ fn add_decorator_to_plain_function() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_decorator(&mut aft, "dec1", file, "plain_function", "cache", None);
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -316,7 +316,7 @@ fn add_decorator_to_decorated_function_first() {
         "login_required",
         Some("first"),
     );
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -338,7 +338,7 @@ fn add_decorator_to_decorated_function_last() {
 
     // get_users already has @app.route("/users") — add @cache as last (just before def)
     let resp = send_add_decorator(&mut aft, "dec3", file, "get_users", "cache", Some("last"));
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -359,7 +359,7 @@ fn add_decorator_preserves_indentation() {
 
     // helper is inside MyService class and already has @staticmethod
     let resp = send_add_decorator(&mut aft, "dec4", file, "helper", "cache", Some("first"));
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -379,7 +379,7 @@ fn add_decorator_target_not_found() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_decorator(&mut aft, "dec5", file, "nonexistent", "cache", None);
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "target_not_found");
     aft.shutdown();
 }
@@ -416,7 +416,7 @@ fn add_struct_tags_no_existing_tag() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_struct_tags(&mut aft, "t1", file, "User", "Name", "json", "name");
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -436,7 +436,7 @@ fn add_struct_tags_with_existing_tags() {
 
     // Email already has `json:"email"` — add xml tag
     let resp = send_add_struct_tags(&mut aft, "t2", file, "User", "Email", "xml", "email");
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
     assert_eq!(resp["syntax_valid"], true);
 
     let content = fs::read_to_string(&tmp).unwrap();
@@ -464,7 +464,7 @@ fn add_struct_tags_update_existing_value() {
         "json",
         "email_addr,omitempty",
     );
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
 
     let content = fs::read_to_string(&tmp).unwrap();
     assert!(
@@ -488,7 +488,7 @@ fn add_struct_tags_preserves_other_keys() {
 
     // Address has `json:"address" xml:"address"` — add yaml tag
     let resp = send_add_struct_tags(&mut aft, "t4", file, "User", "Address", "yaml", "address");
-    assert_eq!(resp["ok"], true, "response: {:?}", resp);
+    assert_eq!(resp["success"], true, "response: {:?}", resp);
 
     let content = fs::read_to_string(&tmp).unwrap();
     // All three tags should be present
@@ -505,7 +505,7 @@ fn add_struct_tags_struct_not_found() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_struct_tags(&mut aft, "t5", file, "Nonexistent", "Name", "json", "name");
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "target_not_found");
     aft.shutdown();
 }
@@ -517,7 +517,7 @@ fn add_struct_tags_field_not_found() {
     let mut aft = AftProcess::spawn();
 
     let resp = send_add_struct_tags(&mut aft, "t6", file, "User", "Missing", "json", "x");
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "field_not_found");
     aft.shutdown();
 }

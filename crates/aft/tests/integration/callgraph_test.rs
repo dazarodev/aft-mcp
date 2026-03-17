@@ -17,7 +17,11 @@ fn callgraph_configure_sets_project_root() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "configure should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "configure should succeed: {:?}",
+        resp
+    );
     assert_eq!(
         resp["project_root"].as_str().unwrap(),
         root,
@@ -34,7 +38,7 @@ fn callgraph_configure_missing_param() {
 
     let resp = aft.send(r#"{"id":"1","command":"configure"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "invalid_request");
 
     aft.shutdown();
@@ -47,7 +51,7 @@ fn callgraph_call_tree_without_configure() {
 
     let resp = aft.send(r#"{"id":"1","command":"call_tree","file":"main.ts","symbol":"main"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "not_configured");
 
     aft.shutdown();
@@ -67,7 +71,7 @@ fn callgraph_cross_file_tree() {
         r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     // Get call tree for main
     let resp = aft.send(&format!(
@@ -75,7 +79,11 @@ fn callgraph_cross_file_tree() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "call_tree should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "call_tree should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["name"], "main");
     assert_eq!(resp["resolved"], true);
 
@@ -146,7 +154,7 @@ fn callgraph_depth_limit_truncates() {
         root
     ));
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["name"], "main");
 
     let children = resp["children"].as_array().expect("children");
@@ -182,7 +190,11 @@ fn callgraph_unknown_symbol_error() {
         root
     ));
 
-    assert_eq!(resp["ok"], false, "unknown symbol should fail: {:?}", resp);
+    assert_eq!(
+        resp["success"], false,
+        "unknown symbol should fail: {:?}",
+        resp
+    );
     assert_eq!(resp["code"], "symbol_not_found");
 
     aft.shutdown();
@@ -206,7 +218,7 @@ fn callgraph_aliased_import_resolution() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "aliased call_tree should succeed: {:?}",
         resp
     );
@@ -241,7 +253,7 @@ fn callgraph_callers_without_configure() {
     let resp =
         aft.send(r#"{"id":"1","command":"callers","file":"helpers.ts","symbol":"validate"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "not_configured");
 
     aft.shutdown();
@@ -261,7 +273,7 @@ fn callgraph_callers_cross_file() {
         r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
 
     // Get callers of validate in helpers.ts
     let resp = aft.send(&format!(
@@ -269,7 +281,7 @@ fn callgraph_callers_cross_file() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "callers should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "callers should succeed: {:?}", resp);
     assert_eq!(resp["symbol"], "validate");
     assert!(
         resp["total_callers"].as_u64().unwrap() > 0,
@@ -323,7 +335,7 @@ fn callgraph_callers_empty_result() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "callers should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "callers should succeed: {:?}", resp);
     assert_eq!(resp["total_callers"], 0, "main should have no callers");
     let callers = resp["callers"].as_array().expect("callers array");
     assert!(
@@ -354,7 +366,7 @@ fn callgraph_callers_recursive() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "recursive callers should succeed: {:?}",
         resp
     );
@@ -383,7 +395,7 @@ fn callgraph_trace_to_not_configured() {
     let resp =
         aft.send(r#"{"id":"1","command":"trace_to","file":"helpers.ts","symbol":"checkFormat"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "not_configured");
 
     aft.shutdown();
@@ -406,7 +418,11 @@ fn callgraph_trace_to_symbol_not_found() {
         root
     ));
 
-    assert_eq!(resp["ok"], false, "unknown symbol should fail: {:?}", resp);
+    assert_eq!(
+        resp["success"], false,
+        "unknown symbol should fail: {:?}",
+        resp
+    );
     assert_eq!(resp["code"], "symbol_not_found");
 
     aft.shutdown();
@@ -432,7 +448,7 @@ fn callgraph_trace_to_single_path() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "trace_to should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "trace_to should succeed: {:?}", resp);
     assert_eq!(resp["target_symbol"], "checkFormat");
     assert!(resp["target_file"].as_str().unwrap().contains("helpers.ts"));
 
@@ -490,7 +506,7 @@ fn callgraph_trace_to_multi_path() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "trace_to should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "trace_to should succeed: {:?}", resp);
     assert_eq!(resp["target_symbol"], "validate");
 
     let total_paths = resp["total_paths"].as_u64().unwrap();
@@ -559,7 +575,7 @@ fn callgraph_trace_to_no_entry_points() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "trace_to on entry point should succeed: {:?}",
         resp
     );
@@ -623,7 +639,11 @@ fn callgraph_watcher_add_caller() {
         r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true, "configure should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "configure should succeed: {:?}",
+        resp
+    );
 
     // Query callers of validate — should show processData from utils.ts
     let resp = aft.send(&format!(
@@ -631,7 +651,7 @@ fn callgraph_watcher_add_caller() {
         root
     ));
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "initial callers should succeed: {:?}",
         resp
     );
@@ -663,7 +683,7 @@ export function extraCheck(input: string): boolean {
         root
     ));
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "callers after add should succeed: {:?}",
         resp
     );
@@ -704,7 +724,11 @@ fn callgraph_watcher_remove_caller() {
         r#"{{"id":"1","command":"configure","project_root":"{}"}}"#,
         root
     ));
-    assert_eq!(resp["ok"], true, "configure should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "configure should succeed: {:?}",
+        resp
+    );
 
     // Query callers of validate — processData from utils.ts should be there
     let resp = aft.send(&format!(
@@ -712,7 +736,7 @@ fn callgraph_watcher_remove_caller() {
         root
     ));
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "initial callers should succeed: {:?}",
         resp
     );
@@ -749,7 +773,7 @@ fn callgraph_watcher_remove_caller() {
         root
     ));
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "callers after remove should succeed: {:?}",
         resp
     );
@@ -786,7 +810,7 @@ fn callgraph_impact_not_configured() {
 
     let resp = aft.send(r#"{"id":"1","command":"impact","file":"helpers.ts","symbol":"validate"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "not_configured");
 
     aft.shutdown();
@@ -809,7 +833,11 @@ fn callgraph_impact_symbol_not_found() {
         root
     ));
 
-    assert_eq!(resp["ok"], false, "unknown symbol should fail: {:?}", resp);
+    assert_eq!(
+        resp["success"], false,
+        "unknown symbol should fail: {:?}",
+        resp
+    );
     assert_eq!(resp["code"], "symbol_not_found");
 
     aft.shutdown();
@@ -837,7 +865,7 @@ fn callgraph_impact_multi_caller() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "impact should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "impact should succeed: {:?}", resp);
     assert_eq!(resp["symbol"], "validate");
     assert!(resp["file"].as_str().unwrap().contains("helpers.ts"));
 
@@ -932,7 +960,7 @@ fn callgraph_trace_data_not_configured() {
         r#"{"id":"1","command":"trace_data","file":"data_flow.ts","symbol":"transformData","expression":"rawInput"}"#,
     );
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "not_configured");
 
     aft.shutdown();
@@ -955,7 +983,11 @@ fn callgraph_trace_data_symbol_not_found() {
         root
     ));
 
-    assert_eq!(resp["ok"], false, "unknown symbol should fail: {:?}", resp);
+    assert_eq!(
+        resp["success"], false,
+        "unknown symbol should fail: {:?}",
+        resp
+    );
     assert_eq!(resp["code"], "symbol_not_found");
 
     aft.shutdown();
@@ -985,7 +1017,11 @@ fn callgraph_trace_data_assignment_tracking() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "trace_data should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "trace_data should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["expression"], "rawInput");
     assert!(
         resp["origin_file"]
@@ -1038,7 +1074,11 @@ fn callgraph_trace_data_cross_file() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "trace_data should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "trace_data should succeed: {:?}",
+        resp
+    );
 
     let hops = resp["hops"].as_array().expect("hops array");
     assert!(
@@ -1103,7 +1143,11 @@ fn callgraph_trace_data_approximation() {
         root
     ));
 
-    assert_eq!(resp["ok"], true, "trace_data should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "trace_data should succeed: {:?}",
+        resp
+    );
 
     let hops = resp["hops"].as_array().expect("hops array");
 

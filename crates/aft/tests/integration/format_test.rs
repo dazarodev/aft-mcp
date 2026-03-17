@@ -60,7 +60,7 @@ fn format_integration_applied_rustfmt() {
         ugly_code
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(
         resp["formatted"], true,
         "rustfmt should have formatted the file"
@@ -101,7 +101,7 @@ fn format_integration_unsupported_language() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(
         resp["formatted"], false,
         "txt files should not be formatted"
@@ -135,7 +135,7 @@ fn format_integration_not_found() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(
         resp["formatted"], false,
         "should not be formatted without formatter"
@@ -167,7 +167,11 @@ fn format_integration_add_import_with_format() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "add_import should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "add_import should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["added"], true);
     // The formatted field must always be present
     assert!(
@@ -210,7 +214,11 @@ fn format_integration_edit_symbol_with_format() {
         new_body
     ));
 
-    assert_eq!(resp["ok"], true, "edit_symbol should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "edit_symbol should succeed: {:?}",
+        resp
+    );
     // The formatted field must always be present
     assert!(
         resp.get("formatted").is_some() && !resp["formatted"].is_null(),
@@ -245,7 +253,11 @@ fn format_integration_fields_always_present() {
         md_target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write to .md should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "write to .md should succeed: {:?}",
+        resp
+    );
     // `formatted` must be present (not missing from JSON)
     assert!(
         resp.get("formatted").is_some(),
@@ -265,7 +277,7 @@ fn format_integration_fields_always_present() {
     ));
 
     assert_eq!(
-        resp2["ok"], true,
+        resp2["success"], true,
         "write to .rs should succeed: {:?}",
         resp2
     );
@@ -298,7 +310,7 @@ fn validate_full_default_no_errors() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     // Without validate:"full", validation_errors should not be present (or empty)
     let has_errors = resp.get("validation_errors").is_some()
         && !resp["validation_errors"].is_null()
@@ -342,7 +354,7 @@ fn validate_full_with_checker() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     // With validate:"full" and cargo available, we should get validation fields
     // Note: cargo check on an isolated .rs file may skip or error (no Cargo.toml),
     // so we check that the validate path was invoked (either errors or skip reason present)
@@ -372,7 +384,7 @@ fn validate_full_unsupported_language() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(
         resp["validate_skipped_reason"], "unsupported_language",
         "should skip validation for unsupported language: {:?}",
@@ -399,7 +411,11 @@ fn validate_full_flows_through_add_import() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "add_import should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "add_import should succeed: {:?}",
+        resp
+    );
     // Validate param should flow through — either errors or skip reason
     let has_validation =
         resp.get("validation_errors").is_some() || resp.get("validate_skipped_reason").is_some();

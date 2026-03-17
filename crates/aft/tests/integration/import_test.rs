@@ -72,7 +72,11 @@ fn add_import_ts_external_group() {
         false,
     );
 
-    assert_eq!(resp["ok"], true, "add_import should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "add_import should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["added"], true);
     assert_eq!(resp["group"], "external");
 
@@ -120,7 +124,11 @@ fn add_import_ts_relative_group() {
         false,
     );
 
-    assert_eq!(resp["ok"], true, "add_import should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "add_import should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["added"], true);
     assert_eq!(resp["group"], "internal");
 
@@ -162,7 +170,7 @@ fn add_import_ts_dedup() {
         false,
     );
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["added"], false, "should not add duplicate");
     assert_eq!(resp["already_present"], true);
 
@@ -195,7 +203,7 @@ fn add_import_ts_alphabetizes() {
         false,
     );
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["added"], true);
 
     let content = fs::read_to_string(&file).unwrap();
@@ -230,7 +238,7 @@ fn add_import_js_works() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import on JS should succeed: {:?}",
         resp
     );
@@ -274,7 +282,7 @@ fn add_import_empty_file() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import on empty file should succeed: {:?}",
         resp
     );
@@ -305,7 +313,7 @@ fn add_import_missing_file_returns_error() {
         false,
     );
 
-    assert_eq!(resp["ok"], false, "should fail for missing file");
+    assert_eq!(resp["success"], false, "should fail for missing file");
     assert_eq!(resp["code"], "file_not_found");
 
     aft.shutdown();
@@ -334,7 +342,10 @@ fn add_import_unsupported_language_returns_error() {
         false,
     );
 
-    assert_eq!(resp["ok"], false, "should fail for unsupported language");
+    assert_eq!(
+        resp["success"], false,
+        "should fail for unsupported language"
+    );
     assert_eq!(resp["code"], "invalid_request");
 
     fs::remove_file(&file).ok();
@@ -348,7 +359,7 @@ fn add_import_missing_params_returns_error() {
     // Missing 'module' param
     let resp = aft.send(r#"{"id":"imp-9","command":"add_import","file":"/tmp/test.ts"}"#);
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "invalid_request");
     assert!(
         resp["message"].as_str().unwrap().contains("module"),
@@ -377,7 +388,7 @@ fn add_import_py_stdlib_group() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import py stdlib should succeed: {:?}",
         resp
     );
@@ -412,7 +423,7 @@ fn add_import_py_third_party_group() {
     let resp = send_add_import(&mut aft, "py-2", &file_str, "click", None, None, false);
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import py third-party should succeed: {:?}",
         resp
     );
@@ -460,7 +471,7 @@ fn add_import_py_local_group() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import py local should succeed: {:?}",
         resp
     );
@@ -495,7 +506,7 @@ fn add_import_py_dedup() {
     // Try to add 'os' which already exists
     let resp = send_add_import(&mut aft, "py-4", &file_str, "os", None, None, false);
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["added"], false, "should not add duplicate");
     assert_eq!(resp["already_present"], true);
 
@@ -522,7 +533,7 @@ fn add_import_rs_std_group() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import rs std should succeed: {:?}",
         resp
     );
@@ -565,7 +576,7 @@ fn add_import_rs_external_group() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import rs external should succeed: {:?}",
         resp
     );
@@ -610,7 +621,7 @@ fn add_import_rs_dedup() {
         false,
     );
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["added"], false, "should not add duplicate");
     assert_eq!(resp["already_present"], true);
 
@@ -629,7 +640,7 @@ fn add_import_go_stdlib_group() {
     let resp = send_add_import(&mut aft, "go-1", &file_str, "net/http", None, None, false);
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import go stdlib should succeed: {:?}",
         resp
     );
@@ -664,7 +675,7 @@ fn add_import_go_external_group() {
     );
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "add_import go external should succeed: {:?}",
         resp
     );
@@ -691,7 +702,7 @@ fn add_import_go_dedup() {
     // Try to add "fmt" which already exists
     let resp = send_add_import(&mut aft, "go-3", &file_str, "fmt", None, None, false);
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["added"], false, "should not add duplicate");
     assert_eq!(resp["already_present"], true);
 
@@ -745,7 +756,11 @@ fn remove_import_entire_statement_ts() {
     // Remove the 'zod' import entirely
     let resp = send_remove_import(&mut aft, "rm-1", &file_str, "zod", None);
 
-    assert_eq!(resp["ok"], true, "remove_import should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "remove_import should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["removed"], true);
     assert_eq!(resp["module"], "zod");
 
@@ -776,7 +791,11 @@ fn remove_import_specific_name_from_multi_ts() {
     // Remove 'useState' from `import { useState, useEffect } from 'react';`
     let resp = send_remove_import(&mut aft, "rm-2", &file_str, "react", Some("useState"));
 
-    assert_eq!(resp["ok"], true, "remove_import should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "remove_import should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["removed"], true);
     assert_eq!(resp["name"], "useState");
 
@@ -808,7 +827,10 @@ fn remove_import_not_found_returns_error() {
 
     let resp = send_remove_import(&mut aft, "rm-3", &file_str, "nonexistent-module", None);
 
-    assert_eq!(resp["ok"], false, "should fail for non-existent module");
+    assert_eq!(
+        resp["success"], false,
+        "should fail for non-existent module"
+    );
     assert_eq!(resp["code"], "import_not_found");
 
     fs::remove_file(&file).ok();
@@ -849,7 +871,7 @@ export function App() {}
     let resp = send_organize_imports(&mut aft, "org-1", &file_str);
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "organize_imports should succeed: {:?}",
         resp
     );
@@ -908,7 +930,7 @@ export function App() {}
     let resp = send_organize_imports(&mut aft, "org-2", &file_str);
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "organize_imports should succeed: {:?}",
         resp
     );
@@ -969,7 +991,7 @@ def main():
     let resp = send_organize_imports(&mut aft, "org-3", &file_str);
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "organize_imports should succeed: {:?}",
         resp
     );
@@ -1037,7 +1059,7 @@ fn main() {}
     let resp = send_organize_imports(&mut aft, "org-4", &file_str);
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "organize_imports should succeed: {:?}",
         resp
     );

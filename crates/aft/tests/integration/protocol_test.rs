@@ -21,13 +21,13 @@ fn test_sequential_commands() {
             // ping
             let resp = aft.send(&format!(r#"{{"id":"{}","command":"ping"}}"#, id));
             assert_eq!(resp["id"], id, "ping response id mismatch at {}", i);
-            assert_eq!(resp["ok"], true, "ping should succeed at {}", i);
+            assert_eq!(resp["success"], true, "ping should succeed at {}", i);
             assert_eq!(resp["command"], "pong", "ping should return pong at {}", i);
         } else if i % 3 == 1 {
             // version
             let resp = aft.send(&format!(r#"{{"id":"{}","command":"version"}}"#, id));
             assert_eq!(resp["id"], id, "version response id mismatch at {}", i);
-            assert_eq!(resp["ok"], true, "version should succeed at {}", i);
+            assert_eq!(resp["success"], true, "version should succeed at {}", i);
             assert!(
                 resp["version"].is_string(),
                 "version should include version string at {}",
@@ -41,7 +41,7 @@ fn test_sequential_commands() {
                 id, msg
             ));
             assert_eq!(resp["id"], id, "echo response id mismatch at {}", i);
-            assert_eq!(resp["ok"], true, "echo should succeed at {}", i);
+            assert_eq!(resp["success"], true, "echo should succeed at {}", i);
             assert_eq!(resp["message"], msg, "echo message mismatch at {}", i);
         }
     }
@@ -71,7 +71,7 @@ fn test_malformed_json_recovery() {
         resp["id"], "_parse_error",
         "parse error should use sentinel id"
     );
-    assert_eq!(resp["ok"], false, "parse error should be ok: false");
+    assert_eq!(resp["success"], false, "parse error should be ok: false");
     assert_eq!(resp["code"], "parse_error", "parse error should have code");
     assert!(
         resp["message"]
@@ -85,7 +85,7 @@ fn test_malformed_json_recovery() {
     let resp = aft.send(r#"{"id":"after-garbage","command":"ping"}"#);
     assert_eq!(resp["id"], "after-garbage");
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "process should recover after garbage input"
     );
     assert_eq!(resp["command"], "pong");
@@ -95,38 +95,38 @@ fn test_malformed_json_recovery() {
     // Verify process is still alive with a follow-up command
     let resp = aft.send(r#"{"id":"after-empty","command":"ping"}"#);
     assert_eq!(resp["id"], "after-empty");
-    assert_eq!(resp["ok"], true, "process should survive empty line");
+    assert_eq!(resp["success"], true, "process should survive empty line");
 
     // 4. Whitespace-only line → also skipped
     aft.send_silent("   ");
     let resp = aft.send(r#"{"id":"after-whitespace","command":"ping"}"#);
     assert_eq!(resp["id"], "after-whitespace");
-    assert_eq!(resp["ok"], true, "process should survive whitespace line");
+    assert_eq!(resp["success"], true, "process should survive whitespace line");
 
     // 5. Partial/truncated JSON → parse error
     let resp = aft.send(r#"{"id":"partial","command":"pin"#);
     assert_eq!(resp["id"], "_parse_error");
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "parse_error");
 
     // 6. Valid command after partial JSON → recovery
     let resp = aft.send(r#"{"id":"after-partial","command":"version"}"#);
     assert_eq!(resp["id"], "after-partial");
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "process should recover after partial JSON"
     );
 
     // 7. Valid JSON but missing required fields → parse error
     let resp = aft.send(r#"{"foo":"bar"}"#);
     assert_eq!(resp["id"], "_parse_error");
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
 
     // 8. Recovery after missing-fields error
     let resp = aft.send(r#"{"id":"after-missing","command":"ping"}"#);
     assert_eq!(resp["id"], "after-missing");
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "process should recover after missing fields"
     );
 
@@ -143,7 +143,7 @@ fn test_unknown_command() {
     // Unknown command → structured error
     let resp = aft.send(r#"{"id":"unk1","command":"nonexistent"}"#);
     assert_eq!(resp["id"], "unk1");
-    assert_eq!(resp["ok"], false, "unknown command should return ok: false");
+    assert_eq!(resp["success"], false, "unknown command should return ok: false");
     assert_eq!(
         resp["code"], "unknown_command",
         "error code should be unknown_command"
@@ -157,14 +157,14 @@ fn test_unknown_command() {
     let resp = aft.send(r#"{"id":"unk2","command":"ping"}"#);
     assert_eq!(resp["id"], "unk2");
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "process should continue after unknown command"
     );
 
     // Another unknown command with different name
     let resp = aft.send(r#"{"id":"unk3","command":"foobar"}"#);
     assert_eq!(resp["id"], "unk3");
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
     assert_eq!(resp["code"], "unknown_command");
     assert!(resp["message"].as_str().unwrap().contains("foobar"));
 
@@ -180,7 +180,7 @@ fn test_clean_shutdown() {
     for i in 0..5 {
         let resp = aft.send(&format!(r#"{{"id":"sd-{}","command":"ping"}}"#, i));
         assert_eq!(resp["id"], format!("sd-{}", i));
-        assert_eq!(resp["ok"], true);
+        assert_eq!(resp["success"], true);
     }
 
     // Close stdin → process should exit cleanly

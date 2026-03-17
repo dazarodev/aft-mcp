@@ -71,7 +71,7 @@ mod tests {
         let json_str = serde_json::to_string(&resp).unwrap();
         let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
         assert_eq!(v["id"], "42");
-        assert_eq!(v["ok"], true);
+        assert_eq!(v["success"], true);
         assert_eq!(v["command"], "pong");
     }
 
@@ -81,7 +81,7 @@ mod tests {
         let json_str = serde_json::to_string(&resp).unwrap();
         let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
         assert_eq!(v["id"], "99");
-        assert_eq!(v["ok"], false);
+        assert_eq!(v["success"], false);
         assert_eq!(v["code"], "unknown_command");
         assert_eq!(v["message"], "unknown command: foo");
     }

@@ -42,7 +42,7 @@ fn write_creates_new_file() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(resp["file"], target.display().to_string());
     assert_eq!(
         resp["created"], true,
@@ -78,7 +78,7 @@ fn write_backups_existing_file() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(resp["created"], false);
     assert!(
         resp["backup_id"].is_string(),
@@ -94,7 +94,7 @@ fn write_backups_existing_file() {
         target.display()
     ));
     assert_eq!(
-        undo_resp["ok"], true,
+        undo_resp["success"], true,
         "undo should succeed: {:?}",
         undo_resp
     );
@@ -119,7 +119,7 @@ fn write_syntax_valid() {
         target.display()
     ));
 
-    assert_eq!(resp["ok"], true, "write should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "write should succeed: {:?}", resp);
     assert_eq!(
         resp["syntax_valid"], true,
         "valid TS should have syntax_valid: true"
@@ -144,7 +144,7 @@ fn write_syntax_invalid() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "write should succeed even with bad syntax: {:?}",
         resp
     );
@@ -187,7 +187,7 @@ fn edit_symbol_replace() {
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "edit_symbol replace should succeed: {:?}",
         resp
     );
@@ -235,7 +235,7 @@ fn edit_symbol_delete() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "edit_symbol delete should succeed: {:?}",
         resp
     );
@@ -270,7 +270,7 @@ fn edit_symbol_ambiguous() {
     ));
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "ambiguous response should succeed: {:?}",
         resp
     );
@@ -312,7 +312,7 @@ fn edit_symbol_not_found() {
     ));
 
     assert_eq!(
-        resp["ok"], false,
+        resp["success"], false,
         "should fail for nonexistent symbol: {:?}",
         resp
     );
@@ -351,7 +351,11 @@ fn edit_match_single_occurrence() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], true, "edit_match should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "edit_match should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["replacements"], 1);
     assert_eq!(resp["syntax_valid"], true);
     assert!(resp["backup_id"].is_string(), "should have backup_id");
@@ -396,7 +400,10 @@ fn edit_match_returns_inline_lsp_diagnostics_when_requested() {
         r#"{{"id":"cfg-inline","command":"configure","project_root":"{}"}}"#,
         root.display()
     ));
-    assert_eq!(configure["ok"], true, "configure failed: {configure:?}");
+    assert_eq!(
+        configure["success"], true,
+        "configure failed: {configure:?}"
+    );
 
     let req = serde_json::json!({
         "id": "em-inline-diag",
@@ -408,7 +415,7 @@ fn edit_match_returns_inline_lsp_diagnostics_when_requested() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], true, "edit_match should succeed: {resp:?}");
+    assert_eq!(resp["success"], true, "edit_match should succeed: {resp:?}");
     let diagnostics = resp["lsp_diagnostics"]
         .as_array()
         .expect("lsp_diagnostics array");
@@ -455,7 +462,7 @@ fn edit_match_multiple_occurrences_returns_candidates() {
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "ambiguous response should succeed: {:?}",
         resp
     );
@@ -507,7 +514,7 @@ fn edit_match_with_occurrence_selector() {
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "edit_match with occurrence should succeed: {:?}",
         resp
     );
@@ -543,7 +550,11 @@ fn edit_match_no_match() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], false, "should fail for no match: {:?}", resp);
+    assert_eq!(
+        resp["success"], false,
+        "should fail for no match: {:?}",
+        resp
+    );
     assert_eq!(resp["code"], "match_not_found");
 
     let status = aft.shutdown();
@@ -575,7 +586,7 @@ fn batch_multiple_edits() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], true, "batch should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "batch should succeed: {:?}", resp);
     assert_eq!(resp["edits_applied"], 2);
     assert!(resp["backup_id"].is_string(), "should have backup_id");
 
@@ -622,7 +633,7 @@ fn batch_rollback_on_failure() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], false, "batch should fail: {:?}", resp);
+    assert_eq!(resp["success"], false, "batch should fail: {:?}", resp);
     assert_eq!(resp["code"], "batch_edit_failed");
 
     // File should be unchanged — no partial application, no backup taken
@@ -659,7 +670,7 @@ fn batch_line_range_edit() {
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
     assert_eq!(
-        resp["ok"], true,
+        resp["success"], true,
         "batch line-range should succeed: {:?}",
         resp
     );
@@ -703,7 +714,7 @@ fn batch_with_undo() {
         ]
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
-    assert_eq!(resp["ok"], true, "batch should succeed: {:?}", resp);
+    assert_eq!(resp["success"], true, "batch should succeed: {:?}", resp);
 
     // Verify edits applied
     let modified = fs::read_to_string(&target).unwrap();
@@ -716,7 +727,7 @@ fn batch_with_undo() {
         target.display()
     ));
     assert_eq!(
-        undo_resp["ok"], true,
+        undo_resp["success"], true,
         "undo should succeed: {:?}",
         undo_resp
     );
@@ -757,7 +768,11 @@ fn edit_match_glob_replaces_across_files() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], true, "glob edit should succeed: {:?}", resp);
+    assert_eq!(
+        resp["success"], true,
+        "glob edit should succeed: {:?}",
+        resp
+    );
     assert_eq!(resp["total_files"], 2, "should match 2 .ts files");
     assert_eq!(
         resp["total_replacements"], 3,
@@ -812,7 +827,7 @@ fn edit_match_glob_dry_run() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["success"], true);
     assert_eq!(resp["dry_run"], true);
     assert_eq!(resp["total_files"], 2);
     assert_eq!(resp["total_replacements"], 3);
@@ -841,7 +856,7 @@ fn edit_match_glob_no_matches_in_files() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
 
     let status = aft.shutdown();
     assert!(status.success());
@@ -862,7 +877,7 @@ fn edit_match_glob_no_files_matched() {
     });
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
-    assert_eq!(resp["ok"], false);
+    assert_eq!(resp["success"], false);
 
     let status = aft.shutdown();
     assert!(status.success());
