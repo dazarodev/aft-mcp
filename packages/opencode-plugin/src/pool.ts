@@ -1,7 +1,7 @@
 import { BinaryBridge, type BridgeOptions } from "./bridge";
 
 const _TAG = "[BridgePool]";
-const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_IDLE_TIMEOUT_MS = Infinity; // keep alive as long as opencode is running
 const DEFAULT_MAX_POOL_SIZE = 8;
 const CLEANUP_INTERVAL_MS = 60 * 1000; // check every minute
 

@@ -19,10 +19,22 @@ pub fn handle_undo(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
-    let path = Path::new(file);
+    // Resolve relative paths against project_root so backup keys match
+    let config = ctx.config();
+    let resolved = if Path::new(file).is_relative() {
+        if let Some(ref root) = config.project_root {
+            root.join(file)
+        } else {
+            Path::new(file).to_path_buf()
+        }
+    } else {
+        Path::new(file).to_path_buf()
+    };
+    drop(config);
+
     let mut backup = ctx.backup().borrow_mut();
 
-    match backup.restore_latest(path) {
+    match backup.restore_latest(&resolved) {
         Ok(entry) => Response::success(
             &req.id,
             serde_json::json!({
