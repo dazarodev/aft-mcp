@@ -3,6 +3,7 @@ mod helpers;
 mod callgraph_test;
 mod commands_test;
 mod dryrun_test;
+mod error_path_test;
 mod edit_test;
 mod extract_function_test;
 mod format_test;
