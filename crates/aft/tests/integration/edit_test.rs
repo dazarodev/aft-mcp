@@ -462,8 +462,8 @@ fn edit_match_multiple_occurrences_returns_candidates() {
     let resp = aft.send(&serde_json::to_string(&req).unwrap());
 
     assert_eq!(
-        resp["success"], true,
-        "ambiguous response should succeed: {:?}",
+        resp["success"], false,
+        "ambiguous response should be an error: {:?}",
         resp
     );
     assert_eq!(resp["code"], "ambiguous_match");

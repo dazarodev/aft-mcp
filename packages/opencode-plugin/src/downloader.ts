@@ -15,7 +15,7 @@ import { chmodSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const REPO = "nichochar/opencode-sfm";
+const REPO = "ualtinok/aft";
 const TAG = "[aft-downloader]";
 
 /** Platform → GitHub release asset suffix */

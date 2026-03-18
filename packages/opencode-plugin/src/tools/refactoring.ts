@@ -47,11 +47,18 @@ export function refactoringTools(ctx: PluginContext): Record<string, ToolDefinit
           .describe("Disambiguation scope when multiple symbols share the same name (move op)"),
         // extract
         name: z.string().optional().describe("Name for the new extracted function (extract op)"),
-        start_line: z.number().describe("First line of range to extract, 1-based (extract op)"),
-        end_line: z.number().describe("Last line of range, exclusive, 1-based (extract op)"),
+        start_line: z
+          .number()
+          .optional()
+          .describe("First line of range to extract, 1-based (extract op)"),
+        end_line: z
+          .number()
+          .optional()
+          .describe("Last line of range, exclusive, 1-based (extract op)"),
         // inline
         call_site_line: z
           .number()
+          .optional()
           .describe("Line where the call expression is located, 1-based (inline op)"),
         // common
         dry_run: z.boolean().optional().describe("Preview as diff without modifying files"),

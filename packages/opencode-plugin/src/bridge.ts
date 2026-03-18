@@ -213,6 +213,7 @@ export class BinaryBridge {
 
   private handleCrash(): void {
     this.process = null;
+    this.configured = false; // Force reconfigure on next command after restart
 
     // Reject all pending requests
     this.rejectAllPending(new Error(`${TAG} Binary crashed (restarts: ${this._restartCount})`));

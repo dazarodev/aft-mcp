@@ -168,8 +168,6 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
         return `${msg} (${ext.slice(1).toUpperCase()}, ${sizeStr}). File: ${filePath}`;
       }
 
-      const _relPath = path.relative(context.worktree, filePath);
-
       // Normalize offset/limit to start_line/end_line (backward compat with opencode's read)
       let startLine = args.start_line;
       let endLine = args.end_line;

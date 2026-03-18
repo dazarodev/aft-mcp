@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender};
+use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 
@@ -66,10 +66,7 @@ pub struct LspClient {
     state: ServerState,
     child: Child,
     writer: Arc<Mutex<BufWriter<std::process::ChildStdin>>>,
-    /// Channel kept on the client to reflect the per-server event stream.
-    /// Reader threads send into the manager's shared event channel.
-    #[allow(dead_code)]
-    event_rx: Receiver<LspEvent>,
+
     /// Pending request responses, keyed by request ID.
     pending: Arc<Mutex<PendingMap>>,
     /// Next request ID counter.
@@ -108,7 +105,7 @@ impl LspClient {
         let reader_writer = Arc::clone(&writer);
         let reader_kind = kind;
         let reader_root = root.clone();
-        let (_client_event_tx, event_rx) = crossbeam_channel::unbounded();
+    
 
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
@@ -177,7 +174,6 @@ impl LspClient {
             state: ServerState::Starting,
             child,
             writer,
-            event_rx,
             pending,
             next_id: AtomicI64::new(1),
         })

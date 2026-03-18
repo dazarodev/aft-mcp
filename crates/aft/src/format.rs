@@ -3,9 +3,11 @@
 //! Provides subprocess execution with timeout protection, language-to-formatter
 //! mapping, and the `auto_format` entry point used by `write_format_validate`.
 
+use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -134,13 +136,30 @@ pub fn run_external_tool(
     }
 }
 
+/// TTL for tool availability cache entries.
+const TOOL_CACHE_TTL: Duration = Duration::from_secs(60);
+
+static TOOL_CACHE: std::sync::LazyLock<Mutex<HashMap<String, (bool, Instant)>>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
 /// Check if a command exists by attempting to spawn it with `--version`.
 ///
 /// First checks `<project_root>/node_modules/.bin/<command>` (for locally installed tools
 /// like biome, prettier), then falls back to PATH lookup.
-/// Returns the resolved command path if found.
+/// Results are cached for 60 seconds to avoid repeated subprocess spawning.
 fn tool_available(command: &str) -> bool {
-    resolve_tool(command, None).is_some()
+    if let Ok(cache) = TOOL_CACHE.lock() {
+        if let Some((available, checked_at)) = cache.get(command) {
+            if checked_at.elapsed() < TOOL_CACHE_TTL {
+                return *available;
+            }
+        }
+    }
+    let result = resolve_tool(command, None).is_some();
+    if let Ok(mut cache) = TOOL_CACHE.lock() {
+        cache.insert(command.to_string(), (result, Instant::now()));
+    }
+    result
 }
 
 /// Like `tool_available` but also checks node_modules/.bin relative to project_root.

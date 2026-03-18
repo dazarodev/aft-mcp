@@ -60,7 +60,7 @@ fn main() {
 fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
     match req.command.as_str() {
         "ping" => Response::success(&req.id, serde_json::json!({ "command": "pong" })),
-        "version" => Response::success(&req.id, serde_json::json!({ "version": "0.1.0" })),
+        "version" => Response::success(&req.id, serde_json::json!({ "version": env!("CARGO_PKG_VERSION") })),
         "echo" => handle_echo(&req),
         "outline" => aft::commands::outline::handle_outline(&req, ctx),
         "zoom" => aft::commands::zoom::handle_zoom(&req, ctx),

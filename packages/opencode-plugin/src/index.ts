@@ -5,7 +5,7 @@ import { normalizeToolMap } from "./normalize-schemas.js";
 import { BridgePool } from "./pool.js";
 import { findBinary } from "./resolver.js";
 import { astTools } from "./tools/ast.js";
-import { editingTools } from "./tools/editing.js";
+
 import { aftPrefixedTools, hoistedTools } from "./tools/hoisted.js";
 import { importTools } from "./tools/imports.js";
 import { lspTools } from "./tools/lsp.js";
@@ -60,7 +60,7 @@ const plugin: Plugin = async (input) => {
       // When disabled: register with aft_ prefix (aft_read, aft_write, aft_edit, aft_apply_patch)
       ...(aftConfig.hoist_builtin_tools !== false ? hoistedTools(ctx) : aftPrefixedTools(ctx)),
       ...readingTools(ctx),
-      ...editingTools(ctx),
+
       ...safetyTools(ctx),
       ...importTools(ctx),
       ...structureTools(ctx),

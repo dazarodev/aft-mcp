@@ -364,10 +364,14 @@ fn handle_single_file_edit_match(
             })
             .collect();
 
-        return Response::success(
+        return Response::error_with_data(
             &req.id,
+            "ambiguous_match",
+            format!(
+                "Found {} matches. Use 'occurrence' (0-indexed) to select one, or 'replaceAll: true' to replace all.",
+                occurrences.len()
+            ),
             serde_json::json!({
-                "code": "ambiguous_match",
                 "occurrences": occurrences,
             }),
         );

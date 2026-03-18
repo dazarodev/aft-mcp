@@ -1,6 +1,6 @@
 import { BinaryBridge, type BridgeOptions } from "./bridge";
 
-const _TAG = "[BridgePool]";
+const TAG = "[BridgePool]";
 const DEFAULT_IDLE_TIMEOUT_MS = Infinity; // keep alive as long as opencode is running
 const DEFAULT_MAX_POOL_SIZE = 8;
 const CLEANUP_INTERVAL_MS = 60 * 1000; // check every minute
@@ -73,7 +73,9 @@ export class BridgePool {
     const now = Date.now();
     for (const [dir, entry] of this.bridges) {
       if (now - entry.lastUsed > this.idleTimeoutMs) {
-        entry.bridge.shutdown().catch(() => {});
+        entry.bridge
+          .shutdown()
+          .catch((err) => console.error(`${TAG} cleanup shutdown failed:`, err));
         this.bridges.delete(dir);
       }
     }
@@ -91,7 +93,9 @@ export class BridgePool {
     }
     if (oldestDir) {
       const entry = this.bridges.get(oldestDir);
-      entry?.bridge.shutdown().catch(() => {});
+      entry?.bridge
+        .shutdown()
+        .catch((err) => console.error(`${TAG} eviction shutdown failed:`, err));
       this.bridges.delete(oldestDir);
     }
   }

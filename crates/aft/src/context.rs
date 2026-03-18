@@ -148,11 +148,20 @@ impl AppContext {
             return Vec::new();
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(1500));
+        // Only wait if an LSP server is actually running
+        let mut lsp = self.lsp();
+        if !lsp.has_active_servers() {
+            return Vec::new();
+        }
+
+        let wait_ms = params
+            .get("wait_ms")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(1500);
+        std::thread::sleep(std::time::Duration::from_millis(wait_ms));
+
         let canonical_path =
             std::fs::canonicalize(file_path).unwrap_or_else(|_| file_path.to_path_buf());
-
-        let mut lsp = self.lsp();
         lsp.drain_events();
         lsp.get_diagnostics_for_file(&canonical_path)
             .into_iter()
