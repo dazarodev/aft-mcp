@@ -168,4 +168,55 @@ impl AppContext {
             .cloned()
             .collect()
     }
+
+    /// Validate that a file path falls within the configured project root.
+    ///
+    /// When `project_root` is configured (normal plugin usage), this resolves the
+    /// path and checks it starts with the root. Returns the canonicalized path on
+    /// success, or an error response on violation.
+    ///
+    /// When no `project_root` is configured (direct CLI usage), all paths pass
+    /// through unrestricted for backward compatibility.
+    pub fn validate_path(
+        &self,
+        req_id: &str,
+        path: &Path,
+    ) -> Result<std::path::PathBuf, crate::protocol::Response> {
+        let config = self.config();
+        let root = match &config.project_root {
+            Some(r) => r.clone(),
+            None => return Ok(path.to_path_buf()), // No root configured, allow all
+        };
+        drop(config);
+
+        // Resolve the path (follow symlinks, normalize ..)
+        let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| {
+            // For new files that don't exist yet, resolve parent + filename
+            if let Some(parent) = path.parent() {
+                let resolved_parent =
+                    std::fs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
+                if let Some(name) = path.file_name() {
+                    return resolved_parent.join(name);
+                }
+            }
+            path.to_path_buf()
+        });
+
+        let resolved_root = std::fs::canonicalize(&root).unwrap_or(root);
+
+        if !resolved.starts_with(&resolved_root) {
+            return Err(crate::protocol::Response::error(
+                req_id,
+                "path_outside_root",
+                format!(
+                    "path '{}' is outside the project root '{}'",
+                    path.display(),
+                    resolved_root.display()
+                ),
+            ));
+        }
+
+        Ok(resolved)
+    }
+
 }

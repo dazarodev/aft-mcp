@@ -207,6 +207,7 @@ pub struct FileParser {
 }
 
 impl FileParser {
+    /// Create a new `FileParser` with an empty parse cache.
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
@@ -274,6 +275,10 @@ impl FileParser {
         Ok((&cached.tree, lang))
     }
 
+    /// Like [`FileParser::parse`] but returns an owned `Tree` clone.
+    ///
+    /// Useful when the caller needs to hold the tree while also calling
+    /// other mutable methods on this parser.
     pub fn parse_cloned(&mut self, path: &Path) -> Result<(Tree, LangId), AftError> {
         let (tree, lang) = self.parse(path)?;
         Ok((tree.clone(), lang))
@@ -1425,6 +1430,7 @@ struct ReExportTarget {
 }
 
 impl TreeSitterProvider {
+    /// Create a new `TreeSitterProvider` backed by a fresh `FileParser`.
     pub fn new() -> Self {
         Self {
             parser: RefCell::new(FileParser::new()),

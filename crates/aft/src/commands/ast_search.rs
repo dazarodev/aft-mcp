@@ -9,6 +9,16 @@ use crate::ast_grep_lang::AstGrepLang;
 use crate::context::AppContext;
 use crate::protocol::{RawRequest, Response};
 
+/// Handle an `ast_search` request.
+///
+/// Params:
+///   - `pattern` (string, required) — ast-grep pattern (e.g. `console.log($MSG)`)
+///   - `lang` (string, required) — target language: typescript, tsx, javascript, python, rust, go
+///   - `paths` (string[], optional) — directories/files to search (default: project root)
+///   - `globs` (string[], optional) — include/exclude glob filters; prefix `!` to exclude
+///   - `context` (integer, optional) — lines of context around each match (default: 0)
+///
+/// Returns: `{ matches: [{ file, line, column, text, meta_variables, context? }], total_matches, files_searched }`
 pub fn handle_ast_search(req: &RawRequest, ctx: &AppContext) -> Response {
     let pattern = match req.params.get("pattern").and_then(|v| v.as_str()) {
         Some(p) => p.to_string(),
@@ -208,6 +218,10 @@ fn search_file(
         .collect()
 }
 
+/// Walk `root` and collect files whose extension is in `extensions`.
+///
+/// Respects `.gitignore` and skips common non-source dirs (`node_modules`, `target`, etc.).
+/// Use `globs` to further filter results; prefix `!` to exclude a pattern.
 pub fn collect_files(root: &Path, extensions: &[&str], globs: &[String]) -> Vec<PathBuf> {
     use ignore::WalkBuilder;
 

@@ -14,6 +14,14 @@ struct LspGotoDefinitionParams {
     character: u32,
 }
 
+/// Handle an `lsp_goto_definition` request.
+///
+/// Params:
+///   - `file` (string, required) — source file path
+///   - `line` (integer, required, 1-based) — cursor line
+///   - `character` (integer, required, 0-based) — cursor column
+///
+/// Returns: `{ definitions: [{ file, line, column, end_line, end_column }] }`
 pub fn handle_lsp_goto_definition(req: &RawRequest, ctx: &AppContext) -> Response {
     let params = match serde_json::from_value::<LspGotoDefinitionParams>(req.params.clone()) {
         Ok(params) => params,

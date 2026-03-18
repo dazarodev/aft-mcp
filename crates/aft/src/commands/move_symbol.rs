@@ -66,7 +66,13 @@ pub fn handle_move_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
     let scope = req.params.get("scope").and_then(|v| v.as_str());
     let dry_run = edit::is_dry_run(&req.params);
 
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let source_path_raw = Path::new(file);
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(destination)) {
+        return resp;
+    }
     let dest_path_raw = Path::new(destination);
 
     if !source_path_raw.exists() {

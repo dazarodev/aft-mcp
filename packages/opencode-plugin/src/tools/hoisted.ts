@@ -608,10 +608,22 @@ function createApplyPatchTool(ctx: PluginContext): ToolDefinition {
         metadata: {},
       });
 
+      // Checkpoint all affected files for atomic rollback
+      const checkpointName = `apply_patch_${Date.now()}`;
+      try {
+        await bridge.send("checkpoint", {
+          name: checkpointName,
+          files: allPaths.map((p) => path.resolve(context.directory, p)),
+        });
+      } catch {
+        // Checkpoint failure is non-fatal — proceed without rollback protection
+      }
+
       // Process each hunk, track diffs for metadata
       const results: string[] = [];
       let combinedBefore = "";
       let combinedAfter = "";
+      let patchFailed = false;
 
       for (const hunk of hunks) {
         const filePath = path.resolve(context.directory, hunk.path);
@@ -632,7 +644,7 @@ function createApplyPatchTool(ctx: PluginContext): ToolDefinition {
           case "delete": {
             try {
               const before = await fs.promises.readFile(filePath, "utf-8").catch(() => "");
-              await fs.promises.unlink(filePath);
+              await bridge.send("delete_file", { file: filePath });
               combinedBefore += before;
               results.push(`Deleted ${hunk.path}`);
             } catch (e) {
@@ -642,45 +654,64 @@ function createApplyPatchTool(ctx: PluginContext): ToolDefinition {
           }
 
           case "update": {
-            // Read original, apply chunks, write back
-            const original = await fs.promises.readFile(filePath, "utf-8");
-            const newContent = applyUpdateChunks(original, filePath, hunk.chunks);
+            try {
+              // Read original, apply chunks, write back
+              const original = await fs.promises.readFile(filePath, "utf-8");
+              const newContent = applyUpdateChunks(original, filePath, hunk.chunks);
 
-            const targetPath = hunk.move_path
-              ? path.resolve(context.directory, hunk.move_path)
-              : filePath;
+              const targetPath = hunk.move_path
+                ? path.resolve(context.directory, hunk.move_path)
+                : filePath;
 
-            const writeResult = await bridge.send("write", {
-              file: targetPath,
-              content: newContent,
-              create_dirs: true,
-              diagnostics: true,
-            });
+              const writeResult = await bridge.send("write", {
+                file: targetPath,
+                content: newContent,
+                create_dirs: true,
+                diagnostics: true,
+              });
 
-            // Collect diagnostics from this file
-            const diags = writeResult.lsp_diagnostics as Array<Record<string, unknown>> | undefined;
-            if (diags && diags.length > 0) {
-              const errors = diags.filter((d) => d.severity === "error");
-              if (errors.length > 0) {
-                const relPath = path.relative(context.worktree, targetPath);
-                const diagLines = errors.map((d) => `  Line ${d.line}: ${d.message}`).join("\n");
-                results.push(`\nLSP errors detected in ${relPath}, please fix:\n${diagLines}`);
+              // Collect diagnostics from this file
+              const diags = writeResult.lsp_diagnostics as
+                | Array<Record<string, unknown>>
+                | undefined;
+              if (diags && diags.length > 0) {
+                const errors = diags.filter((d) => d.severity === "error");
+                if (errors.length > 0) {
+                  const relPath = path.relative(context.worktree, targetPath);
+                  const diagLines = errors.map((d) => `  Line ${d.line}: ${d.message}`).join("\n");
+                  results.push(`\nLSP errors detected in ${relPath}, please fix:\n${diagLines}`);
+                }
               }
-            }
 
-            // Track diff for metadata
-            combinedBefore += original;
-            combinedAfter += newContent;
+              // Track diff for metadata
+              combinedBefore += original;
+              combinedAfter += newContent;
 
-            if (hunk.move_path) {
-              await fs.promises.unlink(filePath);
-              results.push(`Updated and moved ${hunk.path} → ${hunk.move_path}`);
-            } else {
-              results.push(`Updated ${hunk.path}`);
+              if (hunk.move_path) {
+                await bridge.send("delete_file", { file: filePath });
+                results.push(`Updated and moved ${hunk.path} → ${hunk.move_path}`);
+              } else {
+                results.push(`Updated ${hunk.path}`);
+              }
+            } catch (e) {
+              patchFailed = true;
+              results.push(`Failed to update ${hunk.path}: ${e instanceof Error ? e.message : e}`);
+              break;
             }
             break;
           }
         }
+      }
+
+      // On failure, restore checkpoint to undo partial changes
+      if (patchFailed) {
+        try {
+          await bridge.send("restore_checkpoint", { name: checkpointName });
+          results.push("Patch failed — restored files to pre-patch state.");
+        } catch {
+          results.push("Patch failed — checkpoint restore also failed, files may be inconsistent.");
+        }
+        return results.join("\n");
       }
 
       // Store metadata for tool.execute.after hook (match opencode built-in format)

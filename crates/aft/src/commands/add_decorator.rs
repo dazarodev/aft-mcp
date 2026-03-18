@@ -72,6 +72,9 @@ pub fn handle_add_decorator(req: &RawRequest, ctx: &AppContext) -> Response {
     }
 
     // --- Validate ---
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let path = Path::new(file);
     if !path.exists() {
         return Response::error(

@@ -24,6 +24,9 @@ pub fn handle_delete_file(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let path = Path::new(file);
 
     if !path.exists() {

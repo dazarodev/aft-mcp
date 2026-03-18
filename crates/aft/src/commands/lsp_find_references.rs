@@ -20,6 +20,15 @@ fn default_include_declaration() -> bool {
     true
 }
 
+/// Handle an `lsp_find_references` request.
+///
+/// Params:
+///   - `file` (string, required) — source file path
+///   - `line` (integer, required, 1-based) — cursor line
+///   - `character` (integer, required, 0-based) — cursor column
+///   - `include_declaration` (bool, optional) — include the symbol declaration itself (default: true)
+///
+/// Returns: `{ references: [{ file, line, column, end_line, end_column }], total }`
 pub fn handle_lsp_find_references(req: &RawRequest, ctx: &AppContext) -> Response {
     let params = match serde_json::from_value::<LspFindReferencesParams>(req.params.clone()) {
         Ok(params) => params,

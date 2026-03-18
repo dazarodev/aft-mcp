@@ -53,6 +53,9 @@ pub fn handle_remove_import(req: &RawRequest, ctx: &AppContext) -> Response {
         .map(|s| s.to_string());
 
     // --- Validate ---
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let path = Path::new(file);
     if !path.exists() {
         return Response::error(

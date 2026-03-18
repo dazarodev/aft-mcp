@@ -293,6 +293,9 @@ fn handle_single_file_edit_match(
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let path = Path::new(file);
     if !path.exists() {
         return Response::error(

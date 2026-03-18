@@ -107,6 +107,9 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
     }
 
     // --- Validate file ---
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let path = Path::new(file);
     if !path.exists() {
         return Response::error(

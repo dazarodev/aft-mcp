@@ -14,6 +14,14 @@ struct LspHoverParams {
     character: u32,
 }
 
+/// Handle an `lsp_hover` request.
+///
+/// Params:
+///   - `file` (string, required) — source file path
+///   - `line` (integer, required, 1-based) — cursor line
+///   - `character` (integer, required, 0-based) — cursor column
+///
+/// Returns: `{ contents: string | null, language?: string, range?: { start_line, start_column, end_line, end_column } }`
 pub fn handle_lsp_hover(req: &RawRequest, ctx: &AppContext) -> Response {
     let params = match serde_json::from_value::<LspHoverParams>(req.params.clone()) {
         Ok(params) => params,

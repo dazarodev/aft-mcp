@@ -23,6 +23,15 @@ struct LspDiagnosticsParams {
     wait_ms: Option<u64>,
 }
 
+/// Handle an `lsp_diagnostics` request.
+///
+/// Params:
+///   - `file` (string, optional) — return diagnostics for a single file
+///   - `directory` (string, optional) — return diagnostics for all files under a directory
+///   - `severity` (string, optional) — filter: `error`, `warning`, `information`, `hint`, or `all` (default)
+///   - `wait_ms` (integer, optional) — wait N ms for fresh diagnostics before querying (max 10000)
+///
+/// Returns: `{ diagnostics: [{ file, line, column, end_line, end_column, severity, message, code, source }], total, files_with_errors }`
 pub fn handle_lsp_diagnostics(req: &RawRequest, ctx: &AppContext) -> Response {
     let params = match serde_json::from_value::<LspDiagnosticsParams>(req.params.clone()) {
         Ok(params) => params,

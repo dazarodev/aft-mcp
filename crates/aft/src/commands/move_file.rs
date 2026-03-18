@@ -36,7 +36,13 @@ pub fn handle_move_file(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(file)) {
+        return resp;
+    }
     let src_path = Path::new(file);
+    if let Err(resp) = ctx.validate_path(&req.id, Path::new(destination)) {
+        return resp;
+    }
     let dst_path = Path::new(destination);
 
     if !src_path.exists() {
