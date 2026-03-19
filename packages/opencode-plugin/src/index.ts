@@ -52,23 +52,39 @@ const plugin: Plugin = async (input) => {
   const pool = new BridgePool(binaryPath, {}, configOverrides);
   const ctx: PluginContext = { pool, client: input.client, config: aftConfig };
 
-  return {
-    // normalizeToolMap patches _zod.toJSONSchema so that .describe() and .meta()
-    // survive cross-Zod-instance serialization (host Zod ≠ plugin Zod).
-    tool: normalizeToolMap({
-      // When hoisting enabled (default): override opencode built-ins (read, write, edit, apply_patch)
-      // When disabled: register with aft_ prefix (aft_read, aft_write, aft_edit, aft_apply_patch)
-      ...(aftConfig.hoist_builtin_tools !== false ? hoistedTools(ctx) : aftPrefixedTools(ctx)),
-      ...readingTools(ctx),
+  // Build full tool map, then filter out disabled tools
+  const allTools = normalizeToolMap({
+    // When hoisting enabled (default): override opencode built-ins (read, write, edit, apply_patch)
+    // When disabled: register with aft_ prefix (aft_read, aft_write, aft_edit, aft_apply_patch)
+    ...(aftConfig.hoist_builtin_tools !== false ? hoistedTools(ctx) : aftPrefixedTools(ctx)),
+    ...readingTools(ctx),
 
-      ...safetyTools(ctx),
-      ...importTools(ctx),
-      ...structureTools(ctx),
-      ...navigationTools(ctx),
-      ...astTools(ctx),
-      ...refactoringTools(ctx),
-      ...lspTools(ctx),
-    }),
+    ...safetyTools(ctx),
+    ...importTools(ctx),
+    ...structureTools(ctx),
+    ...navigationTools(ctx),
+    ...astTools(ctx),
+    ...refactoringTools(ctx),
+    ...lspTools(ctx),
+  });
+
+  // Filter disabled tools (user + project config union)
+  const disabled = new Set(aftConfig.disabled_tools ?? []);
+  if (disabled.size > 0) {
+    for (const name of disabled) {
+      if (name in allTools) {
+        delete allTools[name];
+      } else {
+        console.error(
+          `[aft-plugin] disabled_tools: "${name}" not found — available: ${Object.keys(allTools).join(", ")}`,
+        );
+      }
+    }
+    console.error(`[aft-plugin] Disabled ${disabled.size} tool(s): ${[...disabled].join(", ")}`);
+  }
+
+  return {
+    tool: allTools,
     // Restore metadata that fromPlugin() overwrites (opencode bug workaround)
     "tool.execute.after": async (
       input: { tool: string; sessionID: string; callID: string },

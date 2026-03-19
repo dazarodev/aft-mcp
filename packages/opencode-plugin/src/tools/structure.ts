@@ -22,7 +22,7 @@ export function structureTools(ctx: PluginContext): Record<string, ToolDefinitio
         "Ops:\n" +
         "- 'add_member': Insert method/field into class, struct, or impl block. Requires 'scope' (container name) and 'code'. Optional 'position'.\n" +
         "- 'add_derive': Add Rust derive macros to a struct/enum. Requires 'target' and 'derives' array. Deduplicates existing derives.\n" +
-        "- 'wrap_try_catch': Wrap a TS/JS function body in try/catch. Requires 'target' (function name). Optional 'catch_body'.\n" +
+        "- 'wrap_try_catch': Wrap a TS/JS function body in try/catch. Requires 'target' (function name). Optional 'catchBody'.\n" +
         "- 'add_decorator': Add Python decorator to function/class. Requires 'target' and 'decorator' (without @). Optional 'position'.\n" +
         "- 'add_struct_tags': Add/update Go struct field tags. Requires 'target' (struct name), 'field', 'tag', 'value'.\n\n" +
         "Parameters:\n" +
@@ -33,12 +33,12 @@ export function structureTools(ctx: PluginContext): Record<string, ToolDefinitio
         "- position (string, optional): Insertion point for add_member/add_decorator — 'first', 'last' (default), 'before:name', 'after:name'\n" +
         "- target (string, optional): Target symbol name — for add_derive (struct/enum), wrap_try_catch (function), add_decorator (function/class), add_struct_tags (struct)\n" +
         "- derives (string[], optional): Derive macro names for add_derive (e.g. ['Debug', 'Clone'])\n" +
-        "- catch_body (string, optional): Custom catch block body for wrap_try_catch (default: 'throw error;')\n" +
+        "- catchBody (string, optional): Custom catch block body for wrap_try_catch (default: 'throw error;')\n" +
         "- decorator (string, optional): Decorator name without @ for add_decorator (e.g. 'staticmethod', 'property')\n" +
         "- field (string, optional): Struct field name for add_struct_tags\n" +
         "- tag (string, optional): Tag key for add_struct_tags (e.g. 'json', 'yaml', 'db')\n" +
         "- value (string, optional): Tag value for add_struct_tags (e.g. 'user_name,omitempty')\n" +
-        "- dry_run (boolean, optional): Preview changes without modifying the file\n" +
+        "- dryRun (boolean, optional): Preview changes without modifying the file\n" +
         "- validate (enum, optional): Validation level — 'syntax' (default) or 'full'\n\n" +
         "Returns: { formatted (string), validation_errors (string[]) }",
       args: {
@@ -69,7 +69,7 @@ export function structureTools(ctx: PluginContext): Record<string, ToolDefinitio
           .array(z.string())
           .optional()
           .describe("Derive macro names (add_derive — e.g. ['Clone', 'Debug'])"),
-        catch_body: z
+        catchBody: z
           .string()
           .optional()
           .describe("Catch block body (wrap_try_catch — default: 'throw error;')"),
@@ -89,12 +89,12 @@ export function structureTools(ctx: PluginContext): Record<string, ToolDefinitio
           .enum(["syntax", "full"])
           .optional()
           .describe("Validation level: 'syntax' (default) or 'full'"),
-        dry_run: z.boolean().optional().describe("Preview without modifying the file"),
+        dryRun: z.boolean().optional().describe("Preview without modifying the file"),
       },
       execute: async (args, context): Promise<string> => {
         const bridge = ctx.pool.getBridge(context.directory);
         const op = args.op as string;
-        const isDryRun = args.dry_run === true;
+        const isDryRun = args.dryRun === true;
 
         if (!isDryRun) {
           const filePath = resolveAbsolutePath(context, args.file as string);
@@ -108,7 +108,7 @@ export function structureTools(ctx: PluginContext): Record<string, ToolDefinitio
 
         const params: Record<string, unknown> = { file: args.file };
         if (args.validate !== undefined) params.validate = args.validate;
-        if (args.dry_run !== undefined) params.dry_run = args.dry_run;
+        if (args.dryRun !== undefined) params.dry_run = args.dryRun;
 
         switch (op) {
           case "add_member":
@@ -122,7 +122,7 @@ export function structureTools(ctx: PluginContext): Record<string, ToolDefinitio
             break;
           case "wrap_try_catch":
             params.target = args.target;
-            if (args.catch_body !== undefined) params.catch_body = args.catch_body;
+            if (args.catchBody !== undefined) params.catch_body = args.catchBody;
             break;
           case "add_decorator":
             params.target = args.target;

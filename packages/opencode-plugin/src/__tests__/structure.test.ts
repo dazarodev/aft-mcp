@@ -249,7 +249,7 @@ describe("Structure tool round-trips", () => {
     expect(content).toContain("catch");
   });
 
-  test("wrap_try_catch with custom catch_body", async () => {
+  test("wrap_try_catch with custom catchBody", async () => {
     createBridge();
     const editTools = aftPrefixedTools(createPluginContext(pool));
     const tools = structureTools(createPluginContext(pool));
@@ -265,7 +265,7 @@ describe("Structure tool round-trips", () => {
         op: "wrap_try_catch",
         file: filePath,
         target: "risky",
-        catch_body: 'console.error("failed:", error);',
+        catchBody: 'console.error("failed:", error);',
       },
       sdkCtx,
     );

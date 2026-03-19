@@ -70,12 +70,12 @@ const READ_DESCRIPTION = `Read file contents or list directory entries.
 
 Parameters:
 - filePath (string, required): Path to file or directory (absolute or relative to project root)
-- start_line (number): 1-based line to start reading from
-- end_line (number): 1-based line to stop reading at (inclusive)
+- startLine (number): 1-based line to start reading from
+- endLine (number): 1-based line to stop reading at (inclusive)
 - offset (number): Line number to start reading from (use with limit)
 - limit (number): Max lines to return (default: 2000)
 
-Use either start_line/end_line OR offset/limit to read a section of a file.
+Use either startLine/endLine OR offset/limit to read a section of a file.
 
 Behavior:
 - Returns line-numbered content (e.g., "1: const x = 1")
@@ -86,7 +86,7 @@ Behavior:
 
 Examples:
   Read full file: { "filePath": "src/app.ts" }
-  Read lines 50-100: { "filePath": "src/app.ts", "start_line": 50, "end_line": 100 }
+  Read lines 50-100: { "filePath": "src/app.ts", "startLine": 50, "endLine": 100 }
   Read 30 lines from line 200: { "filePath": "src/app.ts", "offset": 200, "limit": 30 }
   List directory: { "filePath": "src/" }`;
 
@@ -98,8 +98,8 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
     description: READ_DESCRIPTION,
     args: {
       filePath: z.string(),
-      start_line: z.number().optional(),
-      end_line: z.number().optional(),
+      startLine: z.number().optional(),
+      endLine: z.number().optional(),
       limit: z.number().optional(),
       offset: z.number().optional(),
     },
@@ -168,9 +168,9 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
         return `${msg} (${ext.slice(1).toUpperCase()}, ${sizeStr}). File: ${filePath}`;
       }
 
-      // Normalize offset/limit to start_line/end_line (backward compat with opencode's read)
-      let startLine = args.start_line;
-      let endLine = args.end_line;
+      // Normalize offset/limit to startLine/endLine (backward compat with opencode's read)
+      let startLine = args.startLine;
+      let endLine = args.endLine;
       if (startLine === undefined && args.offset !== undefined) {
         startLine = args.offset;
         if (args.limit !== undefined) {
@@ -215,7 +215,7 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
 
       // Add navigation hint if truncated
       if (data.truncated) {
-        output += `\n(Showing lines ${data.start_line}-${data.end_line} of ${data.total_lines}. Use start_line/end_line to read other sections.)`;
+        output += `\n(Showing lines ${data.start_line}-${data.end_line} of ${data.total_lines}. Use startLine/endLine to read other sections.)`;
       }
 
       return output;
@@ -352,7 +352,7 @@ const EDIT_DESCRIPTION = `Edit a file by finding and replacing text, or by targe
 5. **Batch edits** — pass \`filePath\` + \`edits\` array
    Multiple edits in one file atomically. Each edit is either:
    - \`{ "oldString": "old", "newString": "new" }\` — find/replace
-   - \`{ "line_start": 5, "line_end": 7, "content": "new lines" }\` — replace line range (1-based, inclusive)
+   - \`{ "line_start": 5, "line_end": 7, "content": "new lines" }\` — replace line range (1-based, both inclusive)
    Set content to empty string to delete lines.
 
 6. **Multi-file transaction** — pass \`operations\` array
@@ -368,7 +368,7 @@ const EDIT_DESCRIPTION = `Edit a file by finding and replacing text, or by targe
 - \`content\` (string): New content for symbol replace or file write
 - \`edits\` (array): Batch edits — array of { oldString, newString } or { line_start, line_end, content }
 - \`operations\` (array): Transaction — array of { file, command, ... } for atomic multi-file edits
-- \`dry_run\` (boolean): Preview changes without applying (returns diff)
+- \`dryRun\` (boolean): Preview changes without applying (returns diff)
 - \`diagnostics\` (boolean): Return inline LSP diagnostics after the edit
 
 **Behavior:**
@@ -390,7 +390,7 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
       content: z.string().optional(),
       edits: z.array(z.record(z.string(), z.unknown())).optional(),
       operations: z.array(z.record(z.string(), z.unknown())).optional(),
-      dry_run: z.boolean().optional(),
+      dryRun: z.boolean().optional(),
       diagnostics: z.boolean().optional(),
       createFile: z.boolean().optional(),
     },
@@ -474,15 +474,15 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
         );
       }
 
-      if (args.dry_run) params.dry_run = true;
-      if (!args.dry_run) params.diagnostics = true;
+      if (args.dryRun) params.dry_run = true;
+      if (!args.dryRun) params.diagnostics = true;
       // Request diff from Rust for UI metadata (avoids extra file reads in TS)
-      if (!args.dry_run) params.include_diff = true;
+      if (!args.dryRun) params.include_diff = true;
 
       const data = await bridge.send(command, params);
 
       // Store metadata for tool.execute.after hook (fromPlugin overwrites context.metadata)
-      if (!args.dry_run && data.success && data.diff) {
+      if (!args.dryRun && data.success && data.diff) {
         const diff = data.diff as {
           before?: string;
           after?: string;
@@ -512,7 +512,7 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
       }
 
       // Append inline diagnostics to output (matching write tool and opencode built-in behavior)
-      if (!args.dry_run) {
+      if (!args.dryRun) {
         const diags = data.lsp_diagnostics as Array<Record<string, unknown>> | undefined;
         if (diags && diags.length > 0) {
           const errors = diags.filter((d) => d.severity === "error");

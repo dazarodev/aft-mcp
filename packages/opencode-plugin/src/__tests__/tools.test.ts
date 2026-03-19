@@ -219,7 +219,7 @@ describe("Tool round-trips", () => {
     expect(content).not.toContain("Goodbye");
   });
 
-  test("write dry_run returns diff without modifying file", async () => {
+  test("write dryRun returns diff without modifying file", async () => {
     createBridge();
     const tools = aftPrefixedTools(createPluginContext(pool));
     tmpDir = await mkdtemp(resolve(tmpdir(), "aft-test-"));
@@ -238,7 +238,7 @@ describe("Tool round-trips", () => {
         mode: "write",
         file: filePath,
         content: newContent,
-        dry_run: true,
+        dryRun: true,
       },
       sdkCtx,
     );
@@ -459,9 +459,9 @@ describe("extract_function round-trip", () => {
             op: "extract",
             file: filePath,
             name: "filterAndMap",
-            start_line: 1,
-            end_line: 4,
-            dry_run: true,
+            startLine: 1,
+            endLine: 4,
+            dryRun: true,
           },
           sdkCtx,
         ),
@@ -523,7 +523,7 @@ describe("inline_symbol round-trip", () => {
             op: "inline",
             file: filePath,
             symbol: "helper",
-            call_site_line: 6,
+            callSiteLine: 6,
           },
           sdkCtx,
         ),

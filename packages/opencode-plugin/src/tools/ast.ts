@@ -47,44 +47,18 @@ function getEmptyResultHint(pattern: string, lang: string): string | null {
   return null;
 }
 
-const SUPPORTED_LANGS = [
-  "bash",
-  "c",
-  "cpp",
-  "csharp",
-  "css",
-  "elixir",
-  "go",
-  "haskell",
-  "html",
-  "java",
-  "javascript",
-  "json",
-  "kotlin",
-  "lua",
-  "nix",
-  "php",
-  "python",
-  "ruby",
-  "rust",
-  "scala",
-  "solidity",
-  "swift",
-  "typescript",
-  "tsx",
-  "yaml",
-] as const;
+const SUPPORTED_LANGS = ["typescript", "tsx", "javascript", "python", "rust", "go"] as const;
 
 export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
   const searchTool: ToolDefinition = {
     description:
-      "Search code patterns across filesystem using AST-aware matching. Supports 25 languages.\n\n" +
+      "Search code patterns across filesystem using AST-aware matching. Supports 6 languages.\n\n" +
       "Use meta-variables: $VAR matches a single AST node, $$$ matches multiple nodes (variadic).\n" +
       "IMPORTANT: Patterns must be complete AST nodes (valid code fragments).\n" +
       "For functions, include params and body: 'export async function $NAME($$$) { $$$ }' not just 'export async function $NAME'.\n\n" +
       "Parameters:\n" +
       "- pattern (string, required): AST pattern with meta-variables. Must be a complete AST node.\n" +
-      "- lang (enum, required): Target language — bash, c, cpp, csharp, css, elixir, go, haskell, html, java, javascript, json, kotlin, lua, nix, php, python, ruby, rust, scala, solidity, swift, typescript, tsx, yaml\n" +
+      "- lang (enum, required): Target language — typescript, tsx, javascript, python, rust, go\n" +
       "- paths (string[], optional): Directories or files to search (default: project root)\n" +
       "- globs (string[], optional): Include/exclude glob patterns — prefix '!' to exclude (e.g. ['src/**', '!node_modules'])\n" +
       "- context (number, optional): Number of context lines to show around each match\n\n" +
@@ -166,7 +140,7 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
       "Parameters:\n" +
       "- pattern (string, required): AST pattern to match (same syntax as ast_grep_search)\n" +
       "- rewrite (string, required): Replacement pattern — use $VAR from the match pattern to preserve captured content\n" +
-      "- lang (enum, required): Target language — typescript, javascript, tsx, python, rust, go, and 19 more\n" +
+      "- lang (enum, required): Target language — typescript, tsx, javascript, python, rust, go\n" +
       "- paths (string[], optional): Directories or files to search (default: project root)\n" +
       "- globs (string[], optional): Include/exclude glob patterns — prefix '!' to exclude\n" +
       "- dryRun (boolean, optional, default: true): Preview changes without applying. Set to false to apply.\n\n" +

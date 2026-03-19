@@ -45,6 +45,13 @@ export const AftConfigSchema = z.object({
    * inline diagnostics, and permission checks. Default: true.
    */
   hoist_builtin_tools: z.boolean().optional(),
+  /**
+   * List of tool names to disable. Disabled tools are not registered with
+   * OpenCode and will be invisible to agents. Use exact tool names, e.g.
+   * ["aft_navigate", "aft_refactor"]. Hoisted names ("read", "edit") and
+   * aft-prefixed names both work.
+   */
+  disabled_tools: z.array(z.string()).optional(),
 });
 
 export type AftConfig = z.infer<typeof AftConfigSchema>;
@@ -165,12 +172,17 @@ function loadConfigFromPath(configPath: string): AftConfig | null {
 // ---------------------------------------------------------------------------
 
 function mergeConfigs(base: AftConfig, override: AftConfig): AftConfig {
+  // Union disabled_tools from both levels (user + project)
+  const disabledTools = [...(base.disabled_tools ?? []), ...(override.disabled_tools ?? [])];
+
   return {
     ...base,
     ...override,
     // Deep-merge language-scoped maps instead of replacing
     formatter: { ...base.formatter, ...override.formatter },
     checker: { ...base.checker, ...override.checker },
+    // Union — both levels contribute to the disabled set
+    ...(disabledTools.length > 0 ? { disabled_tools: [...new Set(disabledTools)] } : {}),
   };
 }
 
