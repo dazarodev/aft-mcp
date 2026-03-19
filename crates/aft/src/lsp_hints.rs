@@ -39,14 +39,14 @@ pub fn parse_lsp_hints(req: &RawRequest) -> Option<LspHints> {
     let value = req.lsp_hints.as_ref()?;
     match serde_json::from_value::<LspHints>(value.clone()) {
         Ok(hints) => {
-            eprintln!(
+            log::debug!(
                 "[aft] lsp_hints: parsed {} symbol hints",
                 hints.symbols.len()
             );
             Some(hints)
         }
         Err(e) => {
-            eprintln!("[aft] lsp_hints: ignoring malformed data: {}", e);
+            log::warn!("lsp_hints: ignoring malformed data: {}", e);
             None
         }
     }

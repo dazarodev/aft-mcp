@@ -23,13 +23,24 @@ impl AftProcess {
     }
 
     /// Spawn the aft binary with additional environment variables.
+    /// Stderr is suppressed by default. Use `spawn_with_stderr()` for tests
+    /// that need to inspect stderr output.
     pub fn spawn_with_env(envs: &[(&str, &std::ffi::OsStr)]) -> Self {
+        Self::spawn_inner(envs, false)
+    }
+
+    /// Spawn with stderr piped so tests can read it via `stderr_output()`.
+    pub fn spawn_with_stderr() -> Self {
+        Self::spawn_inner(&[], true)
+    }
+
+    fn spawn_inner(envs: &[(&str, &std::ffi::OsStr)], pipe_stderr: bool) -> Self {
         let binary = env!("CARGO_BIN_EXE_aft");
         let mut command = Command::new(binary);
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stderr(if pipe_stderr { Stdio::piped() } else { Stdio::null() });
 
         for (key, value) in envs {
             command.env(key, value);

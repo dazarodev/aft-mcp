@@ -72,7 +72,7 @@ impl LspManager {
                         self.documents.entry(key.clone()).or_default();
                     }
                     Err(err) => {
-                        eprintln!("[aft-lsp] failed to spawn {}: {}", def.name, err);
+                        log::error!("failed to spawn {}: {}", def.name, err);
                         continue;
                     }
                 }
@@ -305,7 +305,7 @@ impl LspManager {
     pub fn shutdown_all(&mut self) {
         for (key, mut client) in self.clients.drain() {
             if let Err(err) = client.shutdown() {
-                eprintln!("[aft-lsp] error shutting down {:?}: {}", key, err);
+                log::error!("error shutting down {:?}: {}", key, err);
             }
         }
         self.documents.clear();

@@ -103,7 +103,7 @@ pub fn handle_write(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] write: {}", file);
+    log::debug!("write: {}", file);
 
     let mut result = serde_json::json!({
         "file": file,

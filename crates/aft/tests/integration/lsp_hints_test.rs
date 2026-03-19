@@ -73,7 +73,7 @@ fn edit_symbol_without_lsp_hints_returns_candidates() {
 /// edit_symbol with malformed lsp_hints falls back to returning candidates (not a hard error).
 #[test]
 fn edit_symbol_with_malformed_lsp_hints_falls_back() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_stderr();
 
     let fixture = fixture_path("ambiguous.ts");
     let dir = fixture.parent().unwrap().parent().unwrap();

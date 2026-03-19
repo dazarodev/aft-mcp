@@ -387,7 +387,7 @@ fn resolve_explicit_formatter(
         )),
         "none" | "off" | "false" => None,
         _ => {
-            eprintln!(
+            log::debug!(
                 "[aft] format: unknown preferred_formatter '{}' for {:?}, falling back to auto",
                 name, lang
             );
@@ -440,7 +440,7 @@ pub fn auto_format(path: &Path, config: &Config) -> (bool, Option<String>) {
     let lang = match detect_language(path) {
         Some(l) => l,
         None => {
-            eprintln!(
+            log::debug!(
                 "[aft] format: {} (skipped: unsupported_language)",
                 path.display()
             );
@@ -451,7 +451,7 @@ pub fn auto_format(path: &Path, config: &Config) -> (bool, Option<String>) {
     let (cmd, args) = match detect_formatter(path, lang, config) {
         Some(pair) => pair,
         None => {
-            eprintln!("[aft] format: {} (skipped: not_found)", path.display());
+            log::warn!("format: {} (skipped: not_found)", path.display());
             return (false, Some("not_found".to_string()));
         }
     };
@@ -460,19 +460,19 @@ pub fn auto_format(path: &Path, config: &Config) -> (bool, Option<String>) {
 
     match run_external_tool(&cmd, &arg_refs, None, config.formatter_timeout_secs) {
         Ok(_) => {
-            eprintln!("[aft] format: {} ({})", path.display(), cmd);
+            log::error!("format: {} ({})", path.display(), cmd);
             (true, None)
         }
         Err(FormatError::Timeout { .. }) => {
-            eprintln!("[aft] format: {} (skipped: timeout)", path.display());
+            log::error!("format: {} (skipped: timeout)", path.display());
             (false, Some("timeout".to_string()))
         }
         Err(FormatError::NotFound { .. }) => {
-            eprintln!("[aft] format: {} (skipped: not_found)", path.display());
+            log::warn!("format: {} (skipped: not_found)", path.display());
             (false, Some("not_found".to_string()))
         }
         Err(FormatError::Failed { stderr, .. }) => {
-            eprintln!(
+            log::debug!(
                 "[aft] format: {} (skipped: error: {})",
                 path.display(),
                 stderr.lines().next().unwrap_or("unknown")
@@ -480,7 +480,7 @@ pub fn auto_format(path: &Path, config: &Config) -> (bool, Option<String>) {
             (false, Some("error".to_string()))
         }
         Err(FormatError::UnsupportedLanguage) => {
-            eprintln!(
+            log::debug!(
                 "[aft] format: {} (skipped: unsupported_language)",
                 path.display()
             );
@@ -739,7 +739,7 @@ fn resolve_explicit_checker(
         "staticcheck" => Some(("staticcheck".to_string(), vec![file_str.to_string()])),
         "none" | "off" | "false" => None,
         _ => {
-            eprintln!(
+            log::debug!(
                 "[aft] validate: unknown preferred_checker '{}', falling back to auto",
                 name
             );
@@ -991,7 +991,7 @@ pub fn validate_full(path: &Path, config: &Config) -> (Vec<ValidationError>, Opt
     let lang = match detect_language(path) {
         Some(l) => l,
         None => {
-            eprintln!(
+            log::debug!(
                 "[aft] validate: {} (skipped: unsupported_language)",
                 path.display()
             );
@@ -1002,7 +1002,7 @@ pub fn validate_full(path: &Path, config: &Config) -> (Vec<ValidationError>, Opt
     let (cmd, args) = match detect_type_checker(path, lang, config) {
         Some(pair) => pair,
         None => {
-            eprintln!("[aft] validate: {} (skipped: not_found)", path.display());
+            log::warn!("validate: {} (skipped: not_found)", path.display());
             return (Vec::new(), Some("not_found".to_string()));
         }
     };
@@ -1020,7 +1020,7 @@ pub fn validate_full(path: &Path, config: &Config) -> (Vec<ValidationError>, Opt
     ) {
         Ok(result) => {
             let errors = parse_checker_output(&result.stdout, &result.stderr, path, &cmd);
-            eprintln!(
+            log::debug!(
                 "[aft] validate: {} ({}, {} errors)",
                 path.display(),
                 cmd,
@@ -1029,15 +1029,15 @@ pub fn validate_full(path: &Path, config: &Config) -> (Vec<ValidationError>, Opt
             (errors, None)
         }
         Err(FormatError::Timeout { .. }) => {
-            eprintln!("[aft] validate: {} (skipped: timeout)", path.display());
+            log::error!("validate: {} (skipped: timeout)", path.display());
             (Vec::new(), Some("timeout".to_string()))
         }
         Err(FormatError::NotFound { .. }) => {
-            eprintln!("[aft] validate: {} (skipped: not_found)", path.display());
+            log::warn!("validate: {} (skipped: not_found)", path.display());
             (Vec::new(), Some("not_found".to_string()))
         }
         Err(FormatError::Failed { stderr, .. }) => {
-            eprintln!(
+            log::debug!(
                 "[aft] validate: {} (skipped: error: {})",
                 path.display(),
                 stderr.lines().next().unwrap_or("unknown")
@@ -1045,7 +1045,7 @@ pub fn validate_full(path: &Path, config: &Config) -> (Vec<ValidationError>, Opt
             (Vec::new(), Some("error".to_string()))
         }
         Err(FormatError::UnsupportedLanguage) => {
-            eprintln!(
+            log::debug!(
                 "[aft] validate: {} (skipped: unsupported_language)",
                 path.display()
             );
@@ -1206,7 +1206,7 @@ mod tests {
     #[test]
     fn auto_format_happy_path_rustfmt() {
         if !tool_available("rustfmt") {
-            eprintln!("skipping: rustfmt not available");
+            log::warn!("skipping: rustfmt not available");
             return;
         }
 

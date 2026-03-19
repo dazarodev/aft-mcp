@@ -247,14 +247,14 @@ impl FileParser {
             let grammar = grammar_for(lang);
             let mut parser = Parser::new();
             parser.set_language(&grammar).map_err(|e| {
-                eprintln!("[aft] grammar init failed for {:?}: {}", lang, e);
+                log::error!("grammar init failed for {:?}: {}", lang, e);
                 AftError::ParseError {
                     message: format!("grammar init failed for {:?}: {}", lang, e),
                 }
             })?;
 
             let tree = parser.parse(&source, None).ok_or_else(|| {
-                eprintln!("[aft] parse failed for {}", path.display());
+                log::error!("parse failed for {}", path.display());
                 AftError::ParseError {
                     message: format!("tree-sitter parse returned None for {}", path.display()),
                 }
@@ -304,7 +304,7 @@ impl FileParser {
 
         let grammar = grammar_for(lang);
         let query = Query::new(&grammar, query_src).map_err(|e| {
-            eprintln!("[aft] query compile failed for {:?}: {}", lang, e);
+            log::error!("query compile failed for {:?}: {}", lang, e);
             AftError::ParseError {
                 message: format!("query compile error for {:?}: {}", lang, e),
             }

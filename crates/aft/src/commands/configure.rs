@@ -81,25 +81,25 @@ pub fn handle_configure(req: &RawRequest, ctx: &AppContext) -> Response {
     match notify::recommended_watcher(tx) {
         Ok(mut w) => {
             if let Err(e) = w.watch(&root_path, RecursiveMode::Recursive) {
-                eprintln!(
+                log::debug!(
                     "[aft] watcher watch error: {} — callers will work with stale data",
                     e
                 );
             } else {
-                eprintln!("[aft] watcher started: {}", root_path.display());
+                log::info!("watcher started: {}", root_path.display());
             }
             *ctx.watcher().borrow_mut() = Some(w);
             *ctx.watcher_rx().borrow_mut() = Some(rx);
         }
         Err(e) => {
-            eprintln!(
+            log::debug!(
                 "[aft] watcher init failed: {} — callers will work with stale data",
                 e
             );
         }
     }
 
-    eprintln!("[aft] project root set: {}", root_path.display());
+    log::info!("project root set: {}", root_path.display());
 
     Response::success(
         &req.id,

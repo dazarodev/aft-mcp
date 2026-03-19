@@ -133,7 +133,7 @@ pub fn handle_batch(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] batch: {} edits in {}", edits.len(), file);
+    log::debug!("batch: {} edits in {}", edits.len(), file);
 
     let syntax_valid = write_result.syntax_valid.unwrap_or(true);
 

@@ -95,7 +95,7 @@ impl AppContext {
     pub fn lsp_notify_file_changed(&self, file_path: &Path, content: &str) {
         if let Ok(mut lsp) = self.lsp_manager.try_borrow_mut() {
             if let Err(e) = lsp.notify_file_changed(file_path, content) {
-                eprintln!("[aft-lsp] sync error for {}: {}", file_path.display(), e);
+                log::warn!("sync error for {}: {}", file_path.display(), e);
             }
         }
     }
@@ -117,7 +117,7 @@ impl AppContext {
 
         // Send didChange/didOpen
         if let Err(e) = lsp.notify_file_changed(file_path, content) {
-            eprintln!("[aft-lsp] sync error for {}: {}", file_path.display(), e);
+            log::warn!("sync error for {}: {}", file_path.display(), e);
             return Vec::new();
         }
 

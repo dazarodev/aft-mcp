@@ -355,7 +355,7 @@ pub fn handle_inline_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!(
+    log::debug!(
         "[aft] inline_symbol: {} at {}:{}",
         symbol, file, call_site_line
     );

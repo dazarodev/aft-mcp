@@ -8,7 +8,19 @@ use aft::parser::TreeSitterProvider;
 use aft::protocol::{EchoParams, RawRequest, Response};
 
 fn main() {
-    eprintln!("[aft] started, pid {}", std::process::id());
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format(|buf, record| {
+            use std::io::Write;
+            let prefix = if record.target().starts_with("aft::lsp") || record.target().starts_with("aft_lsp") {
+                "[aft-lsp]"
+            } else {
+                "[aft]"
+            };
+            writeln!(buf, "{} {}", prefix, record.args())
+        })
+        .init();
+
+    log::info!("started, pid {}", std::process::id());
 
     let ctx = AppContext::new(Box::new(TreeSitterProvider::new()), Config::default());
 
@@ -21,7 +33,7 @@ fn main() {
         let line = match line_result {
             Ok(l) => l,
             Err(e) => {
-                eprintln!("[aft] stdin read error: {}", e);
+                log::error!("stdin read error: {}", e);
                 break;
             }
         };
@@ -38,7 +50,7 @@ fn main() {
                 dispatch(req, &ctx)
             }
             Err(e) => {
-                eprintln!("[aft] parse error: {} — input: {}", e, trimmed);
+                log::error!("parse error: {} — input: {}", e, trimmed);
                 Response::error(
                     "_parse_error",
                     "parse_error",
@@ -48,13 +60,13 @@ fn main() {
         };
 
         if let Err(e) = write_response(&mut writer, &response) {
-            eprintln!("[aft] stdout write error: {}", e);
+            log::error!("stdout write error: {}", e);
             break;
         }
     }
 
     ctx.lsp().shutdown_all();
-    eprintln!("[aft] stdin closed, shutting down");
+    log::info!("stdin closed, shutting down");
 }
 
 fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
@@ -117,7 +129,7 @@ fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
         // that integration tests execute. See: crates/aft/tests/integration/safety_test.rs
         "snapshot" => handle_snapshot(&req, ctx),
         _ => {
-            eprintln!("[aft] unknown command: {}", req.command);
+            log::warn!("unknown command: {}", req.command);
             Response::error(
                 &req.id,
                 "unknown_command",
@@ -216,7 +228,7 @@ fn drain_watcher_events(ctx: &AppContext) {
         }
     }
 
-    eprintln!("[aft] invalidated {} files", changed.len());
+    log::info!("invalidated {} files", changed.len());
 }
 
 fn drain_lsp_events(ctx: &AppContext) {
@@ -232,7 +244,7 @@ fn drain_lsp_events(ctx: &AppContext) {
                 method,
                 params,
             } => {
-                eprintln!(
+                log::debug!(
                     "[aft-lsp] notification {:?} {} {} {}",
                     server_kind,
                     root.display(),
@@ -247,7 +259,7 @@ fn drain_lsp_events(ctx: &AppContext) {
                 method,
                 params,
             } => {
-                eprintln!(
+                log::debug!(
                     "[aft-lsp] request {:?} {} {:?} {} {}",
                     server_kind,
                     root.display(),
@@ -257,7 +269,7 @@ fn drain_lsp_events(ctx: &AppContext) {
                 );
             }
             LspEvent::ServerExited { server_kind, root } => {
-                eprintln!("[aft-lsp] exited {:?} {}", server_kind, root.display());
+                log::info!("exited {:?} {}", server_kind, root.display());
             }
         }
     }

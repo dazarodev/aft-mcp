@@ -257,7 +257,7 @@ fn handle_glob_edit_match(
         );
     }
 
-    eprintln!(
+    log::debug!(
         "[aft] edit_match (glob): {} replacements across {} files",
         total_replacements, total_files
     );
@@ -326,7 +326,7 @@ fn handle_single_file_edit_match(
 
     // Log if fuzzy match was needed (not exact)
     if fuzzy_matches[0].pass > 1 {
-        eprintln!(
+        log::debug!(
             "[aft] edit_match: fuzzy match (pass {}) for '{}' in {}",
             fuzzy_matches[0].pass, match_str, file
         );
@@ -453,7 +453,7 @@ fn handle_single_file_edit_match(
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] edit_match: {} in {}", match_str, file);
+    log::debug!("edit_match: {} in {}", match_str, file);
 
     let syntax_valid = write_result.syntax_valid.unwrap_or(true);
 

@@ -72,7 +72,7 @@ impl CheckpointStore {
 
         self.checkpoints.insert(name.to_string(), checkpoint);
 
-        eprintln!("[aft] checkpoint created: {} ({} files)", name, file_count);
+        log::info!("checkpoint created: {} ({} files)", name, file_count);
 
         Ok(CheckpointInfo {
             name: name.to_string(),
@@ -96,7 +96,7 @@ impl CheckpointStore {
             })?;
         }
 
-        eprintln!("[aft] checkpoint restored: {}", name);
+        log::info!("checkpoint restored: {}", name);
 
         Ok(CheckpointInfo {
             name: checkpoint.name.clone(),

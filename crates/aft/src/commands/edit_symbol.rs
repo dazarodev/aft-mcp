@@ -268,7 +268,7 @@ pub fn handle_edit_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] edit_symbol: {} in {}", symbol_name, file);
+    log::debug!("edit_symbol: {} in {}", symbol_name, file);
 
     // Compute new range for replace and insert operations
     let new_range = match operation {

@@ -159,7 +159,7 @@ pub fn handle_remove_import(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] remove_import: {}", file);
+    log::debug!("remove_import: {}", file);
 
     // --- Build response ---
     let mut result = serde_json::json!({

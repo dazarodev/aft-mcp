@@ -122,7 +122,7 @@ pub fn handle_add_import(req: &RawRequest, ctx: &AppContext) -> Response {
 
     // --- Check for duplicates ---
     if imports::is_duplicate(&block, module, &names, default_import.as_deref(), type_only) {
-        eprintln!("[aft] add_import: {} (already present)", file);
+        log::debug!("add_import: {} (already present)", file);
         return Response::success(
             &req.id,
             serde_json::json!({
@@ -198,7 +198,7 @@ pub fn handle_add_import(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] add_import: {}", file);
+    log::debug!("add_import: {}", file);
 
     // --- Build response ---
     let mut result = serde_json::json!({

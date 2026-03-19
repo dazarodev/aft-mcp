@@ -62,7 +62,7 @@ pub fn handle_delete_file(req: &RawRequest, ctx: &AppContext) -> Response {
         );
     }
 
-    eprintln!("[aft] delete_file: {}", file);
+    log::debug!("delete_file: {}", file);
 
     let mut result = serde_json::json!({
         "file": file,

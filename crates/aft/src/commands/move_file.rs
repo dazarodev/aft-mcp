@@ -96,7 +96,7 @@ pub fn handle_move_file(req: &RawRequest, ctx: &AppContext) -> Response {
         match std::fs::copy(src_path, dst_path) {
             Ok(_) => {
                 if let Err(e2) = std::fs::remove_file(src_path) {
-                    eprintln!(
+                    log::debug!(
                         "[aft] move_file: copied but failed to remove source: {}",
                         e2
                     );
@@ -112,7 +112,7 @@ pub fn handle_move_file(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     }
 
-    eprintln!("[aft] move_file: {} -> {}", file, destination);
+    log::debug!("move_file: {} -> {}", file, destination);
 
     let mut result = serde_json::json!({
         "file": file,

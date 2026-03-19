@@ -22,6 +22,8 @@ name = "fake-lsp-server"
 path = "tests/lsp/fake_server.rs"
 
 [dependencies]
+log = "0.4"
+env_logger = "0.11"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 lsp-types = "0.97"

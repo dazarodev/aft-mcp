@@ -189,7 +189,7 @@ pub fn handle_transaction(req: &RawRequest, ctx: &AppContext) -> Response {
         })
         .collect();
 
-    eprintln!(
+    log::debug!(
         "[aft] transaction: {} files modified successfully",
         files_modified
     );
@@ -373,7 +373,7 @@ fn rollback(ctx: &AppContext, snapshotted: &[PathBuf], new_files: &[PathBuf]) {
             store.restore_latest(path)
         };
         if let Err(e) = result {
-            eprintln!(
+            log::debug!(
                 "[aft] transaction rollback: failed to restore {}: {}",
                 path.display(),
                 e
@@ -385,7 +385,7 @@ fn rollback(ctx: &AppContext, snapshotted: &[PathBuf], new_files: &[PathBuf]) {
     for path in new_files {
         if path.exists() {
             if let Err(e) = std::fs::remove_file(path) {
-                eprintln!(
+                log::debug!(
                     "[aft] transaction rollback: failed to delete new file {}: {}",
                     path.display(),
                     e
@@ -415,7 +415,7 @@ fn transaction_error(
         }));
     }
 
-    eprintln!(
+    log::debug!(
         "[aft] transaction failed at operation[{}]: {} — rolled back {} files",
         failed_index,
         message,

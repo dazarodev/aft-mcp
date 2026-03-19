@@ -174,7 +174,7 @@ fn test_unknown_command() {
 
 #[test]
 fn test_clean_shutdown() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_stderr();
 
     // Send a few commands to confirm the process is alive
     for i in 0..5 {

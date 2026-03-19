@@ -218,7 +218,7 @@ pub fn handle_add_member(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] add_member: {}", file);
+    log::debug!("add_member: {}", file);
 
     // --- Build response ---
     let mut result = serde_json::json!({

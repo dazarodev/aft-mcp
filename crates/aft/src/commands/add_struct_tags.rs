@@ -220,7 +220,7 @@ pub fn handle_add_struct_tags(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] add_struct_tags: {}", file);
+    log::debug!("add_struct_tags: {}", file);
 
     // --- Build response ---
     let mut result = serde_json::json!({

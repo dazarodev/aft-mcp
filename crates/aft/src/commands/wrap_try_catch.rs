@@ -221,7 +221,7 @@ pub fn handle_wrap_try_catch(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] wrap_try_catch: {}", file);
+    log::debug!("wrap_try_catch: {}", file);
 
     // --- Build response ---
     let mut result = serde_json::json!({

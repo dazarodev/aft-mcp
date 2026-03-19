@@ -86,7 +86,7 @@ pub fn handle_organize_imports(req: &RawRequest, ctx: &AppContext) -> Response {
     };
 
     if block.imports.is_empty() {
-        eprintln!("[aft] organize_imports: {} (no imports)", file);
+        log::debug!("organize_imports: {} (no imports)", file);
         return Response::success(
             &req.id,
             serde_json::json!({
@@ -161,7 +161,7 @@ pub fn handle_organize_imports(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] organize_imports: {}", file);
+    log::debug!("organize_imports: {}", file);
 
     // --- Build response ---
     let groups_info: Vec<serde_json::Value> = grouped

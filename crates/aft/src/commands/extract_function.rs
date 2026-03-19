@@ -327,7 +327,7 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
     }
 
     let param_count = free_vars.parameters.len();
-    eprintln!(
+    log::debug!(
         "[aft] extract_function: {} from {}:{}-{} ({} params)",
         name, file, start_line, end_line, param_count
     );

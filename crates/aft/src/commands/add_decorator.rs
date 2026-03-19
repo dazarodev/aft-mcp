@@ -195,7 +195,7 @@ pub fn handle_add_decorator(req: &RawRequest, ctx: &AppContext) -> Response {
         write_result.lsp_diagnostics = ctx.lsp_post_write(path, &final_content, &req.params);
     }
 
-    eprintln!("[aft] add_decorator: {}", file);
+    log::debug!("add_decorator: {}", file);
 
     // --- Build response ---
     let mut result = serde_json::json!({
