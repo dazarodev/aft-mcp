@@ -17,7 +17,7 @@ export function navigationTools(ctx: PluginContext): Record<string, ToolDefiniti
         "- 'callers': Find all call sites of a symbol. Use before renaming or changing a function's signature.\n" +
         "- 'trace_to': Trace how execution reaches a function from entry points (routes, exports, main). Use to understand context around deeply-nested code.\n" +
         "- 'impact': Analyze what breaks if a symbol changes. Returns affected callers with signatures and entry point status.\n" +
-        "- 'trace_data': Follow a value through variable assignments and function parameters across files. Requires 'expression' arg.\n\n" +
+        "- 'trace_data': Follow a value through variable assignments and function parameters across files. Requires 'symbol' (scope to trace from) and 'expression'.\n\n" +
         "Each op requires specific parameters — see parameter descriptions for requirements.\n\n" +
         "Returns: call_tree { name, file, line, signature, resolved, children }. callers { symbol, file, callers, total_callers, scanned_files }. trace_to { target_symbol, target_file, paths, total_paths, entry_points_found, max_depth_reached, truncated_paths }. impact { symbol, file, signature, parameters, total_affected, affected_files, callers }. trace_data { expression, origin_file, origin_symbol, hops, depth_limited }.",
       args: {

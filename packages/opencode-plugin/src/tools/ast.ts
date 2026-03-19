@@ -57,7 +57,7 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
       "IMPORTANT: Patterns must be complete AST nodes (valid code fragments).\n" +
       "For functions, include params and body: 'export async function $NAME($$$) { $$$ }' not just 'export async function $NAME'.\n\n" +
       "Examples: pattern='console.log($MSG)' lang='typescript', pattern='async function $NAME($$$) { $$$ }' lang='javascript', pattern='def $FUNC($$$): $$$' lang='python'\n\n" +
-      "Returns: { matches: [{ file, line, column, text, meta_variables, context? }], total_matches, files_searched }",
+      "Returns: Text summary — 'Found N match(es) across M file(s)' followed by file:line blocks with matched text and captured meta-variables.",
     args: {
       pattern: z
         .string()
@@ -133,22 +133,18 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
 
   const replaceTool: ToolDefinition = {
     description:
-      "Replace code patterns across filesystem with AST-aware rewriting. Set dryRun=true to preview before applying changes (default: false).\n\n" +
-      "Use meta-variables in the rewrite pattern to preserve matched content from the pattern.\n\n" +
+      "Replace code patterns across filesystem with AST-aware rewriting. Dry-run by default — set dryRun=false to apply.\n\n" +
+      "Use meta-variables in the rewrite pattern to preserve matched content from the pattern.\n" +
+      "IMPORTANT: Patterns must be complete AST nodes (valid code fragments).\n\n" +
       "Example: pattern='console.log($MSG)' rewrite='logger.info($MSG)' lang='typescript' — replaces all console.log calls with logger.info across TypeScript files.\n\n" +
       "Returns: Dry run { files: [{ file, diff, replacements }], total_replacements, total_files, dry_run }. Apply { files: [{ file, replacements, backup_id? }], total_replacements, total_files, dry_run: false }.",
     args: {
       pattern: z.string().describe("AST pattern to match"),
       rewrite: z.string().describe("Replacement pattern (can use $VAR from pattern)"),
       lang: z.enum(SUPPORTED_LANGS).describe("Target language"),
-      paths: z.array(z.string()).optional().describe("Paths to search"),
+      paths: z.array(z.string()).optional().describe("Paths to search (default: ['.'])"),
       globs: z.array(z.string()).optional().describe("Include/exclude globs"),
-      dryRun: z
-        .boolean()
-        .optional()
-        .describe(
-          "Preview changes without applying. Set to true to preview before applying (default: false)",
-        ),
+      dryRun: z.boolean().optional().describe("Preview changes without applying (default: false)"),
     },
     execute: async (args, context): Promise<string> => {
       const bridge = ctx.pool.getBridge(context.directory);

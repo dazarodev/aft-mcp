@@ -15,11 +15,18 @@ export function lspTools(ctx: PluginContext): Record<string, ToolDefinition> {
       "Lazily spawns the appropriate server on first use.\n\n" +
       "Returns: { diagnostics: Array<{ file, line, column, end_line, end_column, severity, message, code }>, total: number, files_with_errors: number }.",
     args: {
-      filePath: z.string().optional().describe("Path to file to get diagnostics for"),
+      filePath: z
+        .string()
+        .optional()
+        .describe(
+          "Path to file to get diagnostics for. Provide 'filePath' for a single file, 'directory' for all files under a path, or omit both for all tracked files",
+        ),
       directory: z
         .string()
         .optional()
-        .describe("Path to directory to get diagnostics for all files under it"),
+        .describe(
+          "Path to directory to get diagnostics for all files under it. Mutually exclusive with 'filePath'",
+        ),
       severity: z
         .enum(["error", "warning", "information", "hint", "all"])
         .optional()

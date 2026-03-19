@@ -98,7 +98,10 @@ export function createReadTool(ctx: PluginContext): ToolDefinition {
       startLine: z.number().optional().describe("1-based line to start reading from"),
       endLine: z.number().optional().describe("1-based line to stop reading at (inclusive)"),
       limit: z.number().optional().describe("Max lines to return (default: 2000)"),
-      offset: z.number().optional().describe("Line number to start reading from (use with limit)"),
+      offset: z
+        .number()
+        .optional()
+        .describe("1-based line number to start reading from (use with limit)"),
     },
     execute: async (args, context): Promise<string> => {
       const bridge = ctx.pool.getBridge(context.directory);
@@ -376,9 +379,12 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
       filePath: z
         .string()
         .optional()
-        .describe("Path to file, or glob pattern for multi-file operations"),
+        .describe("Path to the file to edit (absolute or relative to project root)"),
       oldString: z.string().optional().describe("Text to find (exact match, with fuzzy fallback)"),
-      newString: z.string().optional().describe("Text to replace with"),
+      newString: z
+        .string()
+        .optional()
+        .describe("Text to replace with (omit or set to empty string to delete the matched text)"),
       replaceAll: z.boolean().optional().describe("Replace all occurrences"),
       occurrence: z
         .number()
@@ -390,7 +396,7 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
         .array(z.record(z.string(), z.unknown()))
         .optional()
         .describe(
-          "Batch edits — array of { oldString: string, newString: string } or { startLine: number, endLine: number, content: string }",
+          "Batch edits — array of { oldString: string, newString: string } or { startLine: number (1-based), endLine: number (1-based, inclusive), content: string }",
         ),
       operations: z
         .array(z.record(z.string(), z.unknown()))

@@ -28,7 +28,8 @@ export function safetyTools(ctx: PluginContext): Record<string, ToolDefinition> 
         "- 'restore': Restore files to a previously saved checkpoint. Requires 'name'.\n" +
         "- 'list': List all available named checkpoints. No extra params needed.\n\n" +
         "Each op requires specific parameters — see parameter descriptions for requirements.\n\n" +
-        "Use checkpoint before risky multi-file changes. Use undo for quick single-file rollback.",
+        "Use checkpoint before risky multi-file changes. Use undo for quick single-file rollback.\n\n" +
+        "Returns: undo { file, deleted, backup_id }. history { file, snapshots }. checkpoint { ok, name }. restore { ok, name }. list { checkpoints }.",
       args: {
         op: z
           .enum(["undo", "history", "checkpoint", "restore", "list"])
