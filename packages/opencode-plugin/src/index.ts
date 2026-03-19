@@ -1,10 +1,10 @@
+import { createRequire } from "node:module";
 import type { Plugin } from "@opencode-ai/plugin";
 import { loadAftConfig } from "./config.js";
+import { ensureBinary } from "./downloader.js";
 import { consumeToolMetadata } from "./metadata-store.js";
 import { normalizeToolMap } from "./normalize-schemas.js";
-import { createRequire } from "node:module";
 import { BridgePool } from "./pool.js";
-import { ensureBinary } from "./downloader.js";
 import { findBinary } from "./resolver.js";
 
 /** Read the plugin's own version from package.json at build time. */
@@ -16,6 +16,7 @@ const PLUGIN_VERSION: string = (() => {
     return "0.0.0";
   }
 })();
+
 import { astTools } from "./tools/ast.js";
 
 import { aftPrefixedTools, hoistedTools } from "./tools/hoisted.js";
@@ -74,7 +75,9 @@ const plugin: Plugin = async (input) => {
         ensureBinary(`v${minVersion}`).then(
           (path) => {
             if (path) {
-              console.error(`[aft-plugin] Downloaded compatible binary to ${path}. Restart OpenCode to use it.`);
+              console.error(
+                `[aft-plugin] Downloaded compatible binary to ${path}. Restart OpenCode to use it.`,
+              );
             }
           },
           () => {
