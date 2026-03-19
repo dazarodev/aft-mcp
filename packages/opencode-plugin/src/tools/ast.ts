@@ -133,11 +133,11 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
 
   const replaceTool: ToolDefinition = {
     description:
-      "Replace code patterns across filesystem with AST-aware rewriting. Dry-run by default — set dryRun=false to apply.\n\n" +
+      "Replace code patterns across filesystem with AST-aware rewriting. Applies changes by default — set dryRun=true to preview.\n\n" +
       "Use meta-variables in the rewrite pattern to preserve matched content from the pattern.\n" +
       "IMPORTANT: Patterns must be complete AST nodes (valid code fragments).\n\n" +
       "Example: pattern='console.log($MSG)' rewrite='logger.info($MSG)' lang='typescript' — replaces all console.log calls with logger.info across TypeScript files.\n\n" +
-      "Returns: Dry run { files: [{ file, diff, replacements }], total_replacements, total_files, dry_run }. Apply { files: [{ file, replacements, backup_id? }], total_replacements, total_files, dry_run: false }.",
+      "Returns: Text summary — 'Replaced N match(es) across M file(s)' (or '[DRY RUN] Would replace...') followed by file:line blocks with before/after text.",
     args: {
       pattern: z.string().describe("AST pattern to match"),
       rewrite: z.string().describe("Replacement pattern (can use $VAR from pattern)"),

@@ -379,7 +379,9 @@ function createEditTool(ctx: PluginContext): ToolDefinition {
       filePath: z
         .string()
         .optional()
-        .describe("Path to the file to edit (absolute or relative to project root)"),
+        .describe(
+          "Path to the file to edit (absolute or relative to project root). Required for all modes except 'operations' multi-file transactions",
+        ),
       oldString: z.string().optional().describe("Text to find (exact match, with fuzzy fallback)"),
       newString: z
         .string()

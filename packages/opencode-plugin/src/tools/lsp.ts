@@ -4,8 +4,7 @@ import type { PluginContext } from "../types.js";
 
 const z = tool.schema;
 /**
- * Tool definitions for LSP commands: diagnostics, hover, goto_definition,
- * find_references, prepare_rename, rename.
+ * Tool definitions for LSP commands: diagnostics.
  */
 export function lspTools(ctx: PluginContext): Record<string, ToolDefinition> {
   const diagnosticsTool: ToolDefinition = {
