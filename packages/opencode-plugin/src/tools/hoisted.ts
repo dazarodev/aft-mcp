@@ -371,6 +371,8 @@ Mode priority: operations > edits > symbol (without oldString) > oldString (find
    When multiple matches exist, select the Nth one (0 = first, 1 = second, etc.).
    Example: \`{ "filePath": "src/app.ts", "oldString": "TODO", "newString": "DONE", "occurrence": 0 }\`
 
+Note: Modes 5 and 6 are options on mode 4 (find/replace) — they require \`oldString\`.
+
 **Behavior:**
 - Backs up files before editing (recoverable via aft_safety undo)
 - Auto-formats using project formatter if configured
@@ -379,6 +381,9 @@ Mode priority: operations > edits > symbol (without oldString) > oldString (find
 - LSP error-level diagnostics are returned automatically after non-dry-run edits
 
 Returns: JSON string for the selected edit mode. Dry runs return diff data; non-dry-run edits may append inline LSP error lines.`;
+  // Note: The Returns section intentionally stays high-level because per-mode JSON shapes
+  // vary by Rust command and documenting each would bloat the description for minimal gain.
+  // Agents can parse the JSON response generically — key fields include 'success' and 'diff'.
 }
 
 function createEditTool(ctx: PluginContext, writeToolName = "write"): ToolDefinition {

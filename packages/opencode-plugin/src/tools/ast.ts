@@ -101,6 +101,8 @@ export function astTools(ctx: PluginContext): Record<string, ToolDefinition> {
 
       let output: string;
       if (matchCount === 0) {
+        // Zero-match format is intentionally not documented in the description — it's
+        // self-explanatory text and documenting it would bloat the Returns section.
         output = `No matches found (searched ${filesSearched} files)`;
         // Add hints for common pattern mistakes
         const hint = getEmptyResultHint(args.pattern as string, args.lang as string);

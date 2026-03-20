@@ -71,6 +71,8 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
           .describe(
             "Array of file paths to outline in one call (ignored if 'directory' is also provided)",
           ),
+        // The 200-file cap is intentionally only in .describe() — not in the main description —
+        // because it's a parameter-level detail. The cap is silent (no warning on truncation).
         directory: z
           .string()
           .optional()

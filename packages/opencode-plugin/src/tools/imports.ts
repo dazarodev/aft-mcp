@@ -49,7 +49,9 @@ export function importTools(ctx: PluginContext): Record<string, ToolDefinition> 
         validate: z
           .enum(["syntax", "full"])
           .optional()
-          .describe("Validation level: 'syntax' (default) or 'full'"),
+          .describe(
+            "Validation level: 'syntax' (default) or 'full'. Syntax = tree-sitter parse check only. Full = also runs LSP type-checking (slower, catches more errors)",
+          ),
         dryRun: z
           .boolean()
           .optional()

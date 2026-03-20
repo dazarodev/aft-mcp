@@ -42,6 +42,9 @@ export function refactoringTools(ctx: PluginContext): Record<string, ToolDefinit
           .describe("Symbol name — required for 'move' and 'inline' ops"),
         // move
         destination: z.string().optional().describe("Target file path — required for 'move' op"),
+        // scope disambiguates overloaded top-level names, NOT nested symbols.
+        // "Only works on top-level exports" in the description is correct — scope selects
+        // among multiple top-level symbols that share a name, not class methods.
         scope: z
           .string()
           .optional()
@@ -51,6 +54,8 @@ export function refactoringTools(ctx: PluginContext): Record<string, ToolDefinit
         // extract
         name: z.string().optional().describe("New function name — required for 'extract' op"),
         startLine: z.number().optional().describe("1-based start line — required for 'extract' op"),
+        // endLine is inclusive from the agent's perspective; the execute function adds +1
+        // because the Rust backend expects exclusive end. This is intentional — do not document.
         endLine: z
           .number()
           .optional()
