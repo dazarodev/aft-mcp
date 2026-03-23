@@ -719,25 +719,14 @@ function createApplyPatchTool(ctx: PluginContext): ToolDefinition {
                 ? path.resolve(context.directory, hunk.move_path)
                 : filePath;
 
-              const writeResult = await bridge.send("write", {
+              // Skip per-file LSP diagnostics in apply_patch — it adds a 1.5s sleep
+              // per file and the diagnostics are redundant (OpenCode runs workspace-wide
+              // checks, and we set metadata.diagnostics={} to prevent cross-file bloat).
+              await bridge.send("write", {
                 file: targetPath,
                 content: newContent,
                 create_dirs: true,
-                diagnostics: true,
               });
-
-              // Collect diagnostics from this file
-              const diags = writeResult.lsp_diagnostics as
-                | Array<Record<string, unknown>>
-                | undefined;
-              if (diags && diags.length > 0) {
-                const errors = diags.filter((d) => d.severity === "error");
-                if (errors.length > 0) {
-                  const relPath = path.relative(context.worktree, targetPath);
-                  const diagLines = errors.map((d) => `  Line ${d.line}: ${d.message}`).join("\n");
-                  results.push(`\nLSP errors detected in ${relPath}, please fix:\n${diagLines}`);
-                }
-              }
 
               // Track diff for metadata
               combinedBefore += original;
@@ -801,6 +790,7 @@ function createApplyPatchTool(ctx: PluginContext): ToolDefinition {
               combinedAfter,
             ),
             files,
+            diagnostics: {},
           },
         });
       }
