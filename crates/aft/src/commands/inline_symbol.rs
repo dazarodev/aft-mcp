@@ -309,12 +309,15 @@ pub fn handle_inline_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
     );
 
     // --- Compute new file content ---
-    let new_source = edit::replace_byte_range(
+    let new_source = match edit::replace_byte_range(
         &source,
         replacement_node.start_byte(),
         replacement_node.end_byte(),
         &replacement_text,
-    );
+    ) {
+        Ok(s) => s,
+        Err(e) => return Response::error(&req.id, e.code(), e.to_string()),
+    };
 
     // --- Dry-run check ---
     if edit::is_dry_run(&req.params) {

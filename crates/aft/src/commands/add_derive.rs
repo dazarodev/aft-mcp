@@ -332,7 +332,7 @@ fn apply_derive(
             }
             let new_attr = format!("#[derive({})]", merged.join(", "));
             let new_source =
-                edit::replace_byte_range(source, attr.start_byte, attr.end_byte, &new_attr);
+                match edit::replace_byte_range(source, attr.start_byte, attr.end_byte, &new_attr) { Ok(s) => s, Err(_) => source.to_string() };
             (new_source, merged)
         }
         None => {
@@ -355,7 +355,7 @@ fn apply_derive(
                     .collect::<Vec<_>>()
                     .join(", ")
             );
-            let new_source = edit::replace_byte_range(source, line_start, line_start, &derive_line);
+            let new_source = match edit::replace_byte_range(source, line_start, line_start, &derive_line) { Ok(s) => s, Err(_) => source.to_string() };
             (new_source, new_derives.to_vec())
         }
     }

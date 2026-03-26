@@ -103,10 +103,34 @@ pub fn handle_batch(req: &RawRequest, ctx: &AppContext) -> Response {
     // Phase 3: Sort edits by byte_start descending (bottom-to-top) to prevent drift
     resolved.sort_by(|a, b| b.byte_start.cmp(&a.byte_start));
 
+    // Phase 3.5: Detect overlapping byte ranges after sort (sorted descending by byte_start)
+    for i in 0..resolved.len().saturating_sub(1) {
+        // resolved[i] has a HIGHER byte_start than resolved[i+1]
+        let higher = &resolved[i];
+        let lower = &resolved[i + 1];
+        // Overlap: lower's range extends into higher's range
+        if lower.byte_end > higher.byte_start {
+            return Response::error(
+                &req.id,
+                "overlapping_edits",
+                format!(
+                    "batch: edits overlap — edit at bytes [{}..{}) overlaps with edit at bytes [{}..{})",
+                    lower.byte_start, lower.byte_end, higher.byte_start, higher.byte_end
+                ),
+            );
+        }
+    }
+
     // Phase 4: Apply all edits sequentially to the content
     let mut content = source.clone();
     for r in &resolved {
-        content = edit::replace_byte_range(&content, r.byte_start, r.byte_end, &r.replacement);
+        content = match edit::replace_byte_range(&content, r.byte_start, r.byte_end, &r.replacement)
+        {
+            Ok(updated) => updated,
+            Err(e) => {
+                return Response::error(&req.id, e.code(), e.to_string());
+            }
+        };
     }
 
     // Dry-run: return combined diff without modifying disk

@@ -159,10 +159,13 @@ pub fn handle_read(req: &RawRequest, _ctx: &AppContext) -> Response {
     for (i, line) in lines[start_idx..end_idx].iter().enumerate() {
         let line_num = start_idx + i + 1; // 1-based
         let display_line = if line.len() > MAX_LINE_LENGTH {
+            // Find a safe UTF-8 boundary at or before MAX_LINE_LENGTH to avoid
+            // panicking on multi-byte characters (e.g. emoji, CJK).
+            let safe_end = line.floor_char_boundary(MAX_LINE_LENGTH);
             format!(
                 "{:>width$}: {}... (truncated)\n",
                 line_num,
-                &line[..MAX_LINE_LENGTH],
+                &line[..safe_end],
                 width = line_num_width
             )
         } else {

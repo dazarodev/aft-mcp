@@ -48,7 +48,8 @@ pub fn handle_trace_to(req: &RawRequest, ctx: &AppContext) -> Response {
         .params
         .get("depth")
         .and_then(|v| v.as_u64())
-        .unwrap_or(10) as usize;
+        .unwrap_or(10)
+        .min(100) as usize;
 
     let mut cg_ref = ctx.callgraph().borrow_mut();
     let graph = match cg_ref.as_mut() {

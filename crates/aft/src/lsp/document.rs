@@ -32,12 +32,12 @@ impl DocumentStore {
         version
     }
 
-    /// Bump the version for an already-open document. Returns the new version.
-    /// Panics if document is not open.
-    pub fn bump_version(&mut self, path: &Path) -> i32 {
-        let version = self.versions.get_mut(path).expect("document not open");
+    /// Bump the version for an already-open document. Returns the new version,
+    /// or `None` if the document is not open.
+    pub fn bump_version(&mut self, path: &Path) -> Option<i32> {
+        let version = self.versions.get_mut(path)?;
         *version += 1;
-        *version
+        Some(*version)
     }
 
     /// Get current version, or None if not open.

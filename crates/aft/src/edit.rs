@@ -31,13 +31,55 @@ pub fn line_col_to_byte(source: &str, line: u32, col: u32) -> usize {
 
 /// Replace bytes in `[start..end)` with `replacement`.
 ///
-/// Panics if `start > end` or indices are out of bounds for the source.
-pub fn replace_byte_range(source: &str, start: usize, end: usize, replacement: &str) -> String {
-    let mut result = String::with_capacity(source.len() - (end - start) + replacement.len());
+/// Returns an error if the range is invalid or does not align to UTF-8 char boundaries.
+pub fn replace_byte_range(
+    source: &str,
+    start: usize,
+    end: usize,
+    replacement: &str,
+) -> Result<String, AftError> {
+    if start > end {
+        return Err(AftError::InvalidRequest {
+            message: format!(
+                "invalid byte range [{}..{}): start must be <= end",
+                start, end
+            ),
+        });
+    }
+    if end > source.len() {
+        return Err(AftError::InvalidRequest {
+            message: format!(
+                "invalid byte range [{}..{}): end exceeds source length {}",
+                start,
+                end,
+                source.len()
+            ),
+        });
+    }
+    if !source.is_char_boundary(start) {
+        return Err(AftError::InvalidRequest {
+            message: format!(
+                "invalid byte range [{}..{}): start is not a char boundary",
+                start, end
+            ),
+        });
+    }
+    if !source.is_char_boundary(end) {
+        return Err(AftError::InvalidRequest {
+            message: format!(
+                "invalid byte range [{}..{}): end is not a char boundary",
+                start, end
+            ),
+        });
+    }
+
+    let mut result = String::with_capacity(
+        source.len().saturating_sub(end.saturating_sub(start)) + replacement.len(),
+    );
     result.push_str(&source[..start]);
     result.push_str(replacement);
     result.push_str(&source[end..]);
-    result
+    Ok(result)
 }
 
 /// Validate syntax of a file using a fresh FileParser (D023).
@@ -342,28 +384,28 @@ mod tests {
     #[test]
     fn replace_byte_range_basic() {
         let source = "hello world";
-        let result = replace_byte_range(source, 6, 11, "rust");
+        let result = replace_byte_range(source, 6, 11, "rust").unwrap();
         assert_eq!(result, "hello rust");
     }
 
     #[test]
     fn replace_byte_range_delete() {
         let source = "hello world";
-        let result = replace_byte_range(source, 5, 11, "");
+        let result = replace_byte_range(source, 5, 11, "").unwrap();
         assert_eq!(result, "hello");
     }
 
     #[test]
     fn replace_byte_range_insert_at_same_position() {
         let source = "helloworld";
-        let result = replace_byte_range(source, 5, 5, " ");
+        let result = replace_byte_range(source, 5, 5, " ").unwrap();
         assert_eq!(result, "hello world");
     }
 
     #[test]
     fn replace_byte_range_replace_entire_string() {
         let source = "old content";
-        let result = replace_byte_range(source, 0, source.len(), "new content");
+        let result = replace_byte_range(source, 0, source.len(), "new content").unwrap();
         assert_eq!(result, "new content");
     }
 }

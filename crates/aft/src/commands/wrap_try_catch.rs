@@ -195,7 +195,7 @@ pub fn handle_wrap_try_catch(req: &RawRequest, ctx: &AppContext) -> Response {
     };
 
     // --- Replace ---
-    let new_source = edit::replace_byte_range(&source, body_node.0, body_node.1, &wrapped);
+    let new_source = match edit::replace_byte_range(&source, body_node.0, body_node.1, &wrapped) { Ok(s) => s, Err(e) => return Response::error(&req.id, e.code(), e.to_string()) };
 
     // Dry-run: return diff without modifying disk
     if edit::is_dry_run(&req.params) {

@@ -109,6 +109,23 @@ pub fn handle_ast_replace(req: &RawRequest, ctx: &AppContext) -> Response {
         .clone()
         .unwrap_or_else(|| PathBuf::from("."));
 
+    // Validate the pattern upfront. ast-grep-core panics (via unwrap) on patterns that
+    // parse to multiple AST nodes (e.g. bare `catch`/`finally` clauses), and the release
+    // binary uses panic="abort", so catch_unwind cannot save us.
+    {
+        use ast_grep_core::matcher::Pattern as AstPattern;
+        if let Err(e) = AstPattern::try_new(&pattern, lang.clone()) {
+            return Response::error(
+                &req.id,
+                "invalid_pattern",
+                format!(
+                    "ast_replace: invalid pattern '{}': {}. Patterns must be complete AST nodes.",
+                    pattern, e
+                ),
+            );
+        }
+    }
+
     let files = collect_files(&project_root, &lang, &paths, &globs);
 
     let mut file_results: Vec<serde_json::Value> = Vec::new();

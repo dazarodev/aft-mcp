@@ -205,7 +205,10 @@ pub fn handle_edit_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
                 return Response::error(
                     &req.id,
                     "invalid_request",
-                    format!("edit_symbol: 'content' is required for operation '{}'", operation),
+                    format!(
+                        "edit_symbol: 'content' is required for operation '{}'",
+                        operation
+                    ),
                 );
             }
         }
@@ -230,6 +233,12 @@ pub fn handle_edit_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
             edit::replace_byte_range(&source, end_byte, end_byte, &insert_text)
         }
         _ => unreachable!(),
+    };
+    let new_source = match new_source {
+        Ok(updated) => updated,
+        Err(e) => {
+            return Response::error(&req.id, e.code(), e.to_string());
+        }
     };
 
     // Dry-run: return diff without modifying disk
@@ -339,7 +348,7 @@ pub fn handle_edit_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
             };
 
             let end = if let Some(ref nr) = new_range {
-                nr.end_line as usize + 1
+                (nr.end_line as usize + 1).min(lines.len())
             } else {
                 (original_range.end_line as usize + 1).min(lines.len())
             };

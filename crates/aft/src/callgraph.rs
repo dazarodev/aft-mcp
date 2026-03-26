@@ -1134,7 +1134,10 @@ impl CallGraph {
 
         // Get the target symbol's own metadata
         let (target_signature, target_parameters, target_lang) = {
-            let file_data = self.data.get(&canon).expect("file just built");
+            let file_data = match self.data.get(&canon) {
+                Some(d) => d,
+                None => return Err(AftError::InvalidRequest { message: "file data missing after build".to_string() }),
+            };
             let meta = file_data.symbol_metadata.get(symbol);
             let sig = meta.and_then(|m| m.signature.clone());
             let lang = file_data.lang;
@@ -1248,7 +1251,10 @@ impl CallGraph {
 
         // Verify symbol exists
         {
-            let fd = self.data.get(&canon).expect("file just built");
+            let fd = match self.data.get(&canon) {
+                Some(d) => d,
+                None => return Err(AftError::InvalidRequest { message: "file data missing after build".to_string() }),
+            };
             let has_symbol = fd.calls_by_symbol.contains_key(symbol)
                 || fd.exported_symbols.contains(&symbol.to_string())
                 || fd.symbol_metadata.contains_key(symbol);

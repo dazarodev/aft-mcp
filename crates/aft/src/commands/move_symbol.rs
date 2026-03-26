@@ -231,7 +231,7 @@ pub fn handle_move_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
     let dest_symbol_text = prepare_exported_symbol(symbol_text);
 
     // Prepare source with symbol removed
-    let new_source = remove_symbol_from_source(&source_content, start_byte, end_byte);
+    let new_source = match remove_symbol_from_source(&source_content, start_byte, end_byte) { Ok(s) => s, Err(e) => return Response::error(&req.id, e.code(), e.to_string()) };
 
     // --- Read destination file (may not exist yet) ---
     let dest_content = if dest_path.exists() {
@@ -628,7 +628,7 @@ fn prepare_exported_symbol(symbol_text: &str) -> String {
 }
 
 /// Remove a symbol from source content, cleaning up surrounding whitespace.
-fn remove_symbol_from_source(source: &str, start_byte: usize, end_byte: usize) -> String {
+fn remove_symbol_from_source(source: &str, start_byte: usize, end_byte: usize) -> Result<String, crate::error::AftError> {
     // Extend backwards to include any preceding blank lines
     let mut actual_start = start_byte;
 
@@ -1067,7 +1067,7 @@ mod tests {
         let source = "export function keep() {}\n\nexport function remove() {}\n\nexport function alsoKeep() {}\n";
         let start = source.find("export function remove").unwrap();
         let end = start + "export function remove() {}".len();
-        let result = remove_symbol_from_source(source, start, end);
+        let result = remove_symbol_from_source(source, start, end).unwrap();
         assert!(result.contains("export function keep()"));
         assert!(!result.contains("remove"));
         assert!(result.contains("export function alsoKeep()"));

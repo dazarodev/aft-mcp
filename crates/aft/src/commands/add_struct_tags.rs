@@ -172,7 +172,7 @@ pub fn handle_add_struct_tags(req: &RawRequest, ctx: &AppContext) -> Response {
             }
             let new_tag_str = format!("`{}`", format_struct_tags(&tags));
             let new_source =
-                edit::replace_byte_range(&source, tag_info.start, tag_info.end, &new_tag_str);
+                match edit::replace_byte_range(&source, tag_info.start, tag_info.end, &new_tag_str) { Ok(s) => s, Err(e) => return Response::error(&req.id, e.code(), e.to_string()) };
             (new_source, new_tag_str)
         }
         None => {
@@ -183,7 +183,7 @@ pub fn handle_add_struct_tags(req: &RawRequest, ctx: &AppContext) -> Response {
             let insert_pos = field_info.type_end;
             let insert_text = format!(" {}", tag_str);
             let new_source =
-                edit::replace_byte_range(&source, insert_pos, insert_pos, &insert_text);
+                match edit::replace_byte_range(&source, insert_pos, insert_pos, &insert_text) { Ok(s) => s, Err(e) => return Response::error(&req.id, e.code(), e.to_string()) };
             (new_source, tag_str)
         }
     };

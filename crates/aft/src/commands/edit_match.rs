@@ -407,24 +407,34 @@ fn handle_single_file_edit_match(
         // Apply replacements in reverse order to preserve byte offsets
         let mut result = source.clone();
         for m in fuzzy_matches.iter().rev() {
-            result = edit::replace_byte_range(
+            result = match edit::replace_byte_range(
                 &result,
                 m.byte_start,
                 m.byte_start + m.byte_len,
                 replacement,
-            );
+            ) {
+                Ok(updated) => updated,
+                Err(e) => {
+                    return Response::error(&req.id, e.code(), e.to_string());
+                }
+            };
         }
         (result, count)
     } else {
         let target_idx = occurrence.unwrap_or(0);
         let m = &fuzzy_matches[target_idx];
         (
-            edit::replace_byte_range(
+            match edit::replace_byte_range(
                 &source,
                 m.byte_start,
                 m.byte_start + m.byte_len,
                 replacement,
-            ),
+            ) {
+                Ok(updated) => updated,
+                Err(e) => {
+                    return Response::error(&req.id, e.code(), e.to_string());
+                }
+            },
             1,
         )
     };

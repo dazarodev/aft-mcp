@@ -129,8 +129,8 @@ fn test_document_store_version_tracking() {
 
     assert_eq!(store.open(path.clone()), 0);
     assert_eq!(store.version(&path), Some(0));
-    assert_eq!(store.bump_version(&path), 1);
-    assert_eq!(store.bump_version(&path), 2);
+    assert_eq!(store.bump_version(&path), Some(1));
+    assert_eq!(store.bump_version(&path), Some(2));
     assert_eq!(store.version(&path), Some(2));
 }
 

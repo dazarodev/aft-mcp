@@ -155,7 +155,18 @@ fn search_file(
     let source_lines: Vec<&str> = source.lines().collect();
     let file_str = file_path.display().to_string();
 
-    root.find_all(pattern)
+    // Validate the pattern before searching. ast-grep-core panics (via unwrap) on patterns
+    // that parse to multiple AST nodes (e.g. bare `catch` or `finally` clauses), and the
+    // release binary uses panic="abort", so catch_unwind cannot save us.
+    use ast_grep_core::matcher::Pattern as AstPattern;
+    if AstPattern::try_new(pattern, lang.clone()).is_err() {
+        return Vec::new();
+    }
+
+    let matches_iter: Vec<_> = root.find_all(pattern).collect();
+
+    matches_iter
+        .into_iter()
         .map(|node_match| {
             let start_pos = node_match.start_pos();
             // ast-grep line() is 0-based; add 1 for 1-based response

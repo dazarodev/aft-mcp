@@ -157,7 +157,8 @@ impl AppContext {
         let wait_ms = params
             .get("wait_ms")
             .and_then(|v| v.as_u64())
-            .unwrap_or(1500);
+            .unwrap_or(1500)
+            .min(10_000); // Cap at 10 seconds to prevent hangs from adversarial input
         std::thread::sleep(std::time::Duration::from_millis(wait_ms));
 
         let canonical_path =
@@ -218,5 +219,4 @@ impl AppContext {
 
         Ok(resolved)
     }
-
 }

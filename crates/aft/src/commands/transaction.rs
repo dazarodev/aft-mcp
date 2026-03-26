@@ -289,12 +289,13 @@ fn compute_new_content(op: &ParsedOp) -> Result<String, String> {
             }
 
             let m = &fuzzy_matches[0];
-            Ok(edit::replace_byte_range(
+            edit::replace_byte_range(
                 &source,
                 m.byte_start,
                 m.byte_start + m.byte_len,
                 replacement,
-            ))
+            )
+            .map_err(|e| e.to_string())
         }
     }
 }
@@ -362,12 +363,13 @@ fn compute_new_content_dry(op: &ParsedOp, original: &str) -> Result<String, Stri
             }
 
             let m = &fuzzy_matches[0];
-            Ok(edit::replace_byte_range(
+            edit::replace_byte_range(
                 original,
                 m.byte_start,
                 m.byte_start + m.byte_len,
                 replacement,
-            ))
+            )
+            .map_err(|e| e.to_string())
         }
     }
 }
