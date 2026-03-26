@@ -105,6 +105,13 @@ fi
 echo "→ Rebuilding local binary with new version..."
 cargo build --release -p agent-file-tools --quiet 2>&1 || { echo "Error: Release build failed"; exit 1; }
 
+# Update cached binaries so the running plugin finds the new version
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/aft/bin"
+if [ -d "$CACHE_DIR" ]; then
+  cp target/release/aft "$CACHE_DIR/aft" 2>/dev/null && echo "  Updated $CACHE_DIR/aft"
+  mkdir -p "$CACHE_DIR/$TAG" && cp target/release/aft "$CACHE_DIR/$TAG/aft" 2>/dev/null && echo "  Updated $CACHE_DIR/$TAG/aft"
+fi
+
 echo "→ Creating tag $TAG..."
 git tag -a "$TAG" -m "Release $TAG"
 echo ""

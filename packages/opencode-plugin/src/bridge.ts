@@ -101,6 +101,13 @@ export class BinaryBridge {
           ...this.configOverrides,
         });
         await this.checkVersion();
+
+        // Version check may have triggered a hot-swap (replaceBinary kills the process).
+        // If the bridge died, re-spawn and re-configure before proceeding.
+        if (!this.isAlive()) {
+          this.configured = false;
+          return this.send(command, params);
+        }
       }
     }
 
