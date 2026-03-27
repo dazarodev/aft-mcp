@@ -87,13 +87,28 @@ export function readingTools(ctx: PluginContext): Record<string, ToolDefinition>
         }
 
         // Directory mode: discover source files recursively and batch outline
-        if (typeof args.directory === "string") {
-          const dirPath = resolve(context.directory, args.directory);
+        // Also auto-detect when filePath is a directory and route here
+        let dirArg = typeof args.directory === "string" ? args.directory : undefined;
+        if (!dirArg && typeof args.filePath === "string" && !Array.isArray(args.files)) {
+          try {
+            const { stat } = await import("node:fs/promises");
+            const resolved = resolve(context.directory, args.filePath);
+            const st = await stat(resolved);
+            if (st.isDirectory()) {
+              dirArg = args.filePath;
+            }
+          } catch {
+            // Not a directory or doesn't exist — fall through to normal file handling
+          }
+        }
+
+        if (dirArg) {
+          const dirPath = resolve(context.directory, dirArg);
           const files = await discoverSourceFiles(dirPath);
           if (files.length === 0) {
             return JSON.stringify({
               success: false,
-              message: `No source files found under ${args.directory}`,
+              message: `No source files found under ${dirArg}`,
             });
           }
           const response = await bridge.send("outline", { files });
