@@ -19,6 +19,7 @@ const PLUGIN_VERSION: string = (() => {
 })();
 
 import { astTools } from "./tools/ast.js";
+import { conflictTools } from "./tools/conflicts.js";
 
 import { aftPrefixedTools, hoistedTools } from "./tools/hoisted.js";
 import { importTools } from "./tools/imports.js";
@@ -131,6 +132,8 @@ const plugin: Plugin = async (input) => {
     ...refactoringTools(ctx),
     // LSP diagnostics: recommended+
     ...(surface !== "minimal" && lspTools(ctx)),
+    // Git conflicts: recommended+
+    ...(surface !== "minimal" && conflictTools(ctx)),
   });
 
   // Remove all-only tools when surface is minimal or recommended
@@ -169,6 +172,14 @@ const plugin: Plugin = async (input) => {
       if (stored) {
         if (stored.title) output.title = stored.title;
         if (stored.metadata) output.metadata = { ...output.metadata, ...stored.metadata };
+      }
+      // Hint: when a git merge/rebase produces conflicts, nudge the agent toward aft_conflicts
+      if (
+        input.tool === "bash" &&
+        output.output?.includes("Automatic merge failed; fix conflicts")
+      ) {
+        output.output +=
+          "\n\n[Hint] Use aft_conflicts to see all conflict regions across files in a single call.";
       }
     },
     dispose: () => pool.shutdown(),

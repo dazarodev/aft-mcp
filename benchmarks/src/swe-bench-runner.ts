@@ -180,7 +180,9 @@ async function runTask(opts: {
     "",
     "## Instructions",
     "",
-    "1. Explore the codebase to find the relevant files and functions",
+    mode =='with-aft' ?
+        "1. Explore the codebase to find the relevant files and functions, you can use aft_outline, aft_zoom and other aft_* tools where you deem necessary." :
+        "1. Explore the codebase to find the relevant files and functions",
     "2. Understand the root cause of the issue",
     "3. Make the minimal code change to fix the issue",
     "4. Do NOT run tests (the test environment is not set up)",
@@ -203,7 +205,7 @@ async function runTask(opts: {
     agentSuccess = result.exitCode === 0;
     sessionId = parseSessionIdFromLogs(result.stderr);
 
-    if (true) {
+    if (verbose) {
       if (sessionId) console.log(`    Session: ${sessionId}`);
       if (!agentSuccess) {
         console.log(`    Exit code: ${result.exitCode}`);

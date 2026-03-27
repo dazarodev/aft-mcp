@@ -10,6 +10,7 @@ pub mod call_tree;
 pub mod callers;
 pub mod checkpoint;
 pub mod configure;
+pub mod conflicts;
 pub mod delete_file;
 pub mod edit_history;
 pub mod edit_match;

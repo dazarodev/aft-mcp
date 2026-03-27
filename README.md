@@ -139,6 +139,7 @@ Here's a typical agent workflow:
 - **Workspace-wide refactoring** — move symbols between files (updates all imports), extract functions, inline functions
 - **Safety & recovery** — undo last edit, named checkpoints, restore to any checkpoint
 - **AST pattern search & replace** — structural code search using meta-variables (`$VAR`, `$$$`), powered by ast-grep
+- **Git conflict viewer** — show all merge conflicts across the repository in a single call with line-numbered regions
 - **Inline diagnostics** — write and edit return LSP errors detected after the change
 - **UI metadata** — the OpenCode desktop shows file paths and diff previews (`+N/-N`) for every edit
 - **Local tool discovery** — finds biome, prettier, tsc, pyright in `node_modules/.bin` automatically
@@ -176,6 +177,7 @@ Always registered with `aft_` prefix regardless of hoisting setting.
 | `aft_outline` | Structural outline of a file, files, or directory | `filePath`, `files[]`, `directory` |
 | `aft_zoom` | Inspect symbols with call-graph annotations | `filePath`, `symbol`, `symbols[]` |
 | `aft_import` | Language-aware import add/remove/organize | `op`, `filePath`, `module`, `names[]` |
+| `aft_conflicts` | Show all git merge conflicts with line-numbered regions | *(none)* |
 | `aft_safety` | Undo, history, checkpoints, restore | `op`, `filePath`, `name` |
 
 **All tier** (set `tool_surface: "all"`):
@@ -412,6 +414,41 @@ For Markdown files, use the heading text as the symbol name (e.g. `"symbol": "Ar
 
 ---
 
+### aft_conflicts
+
+Show all git merge conflicts across the repository in a single call. Auto-discovers conflicted
+files via `git ls-files --unmerged`, parses conflict markers, and returns line-numbered regions
+with 3 lines of surrounding context — the same format as `read` output.
+
+```json
+{}
+```
+
+No parameters required. Returns output like:
+
+```
+9 files, 13 conflicts
+
+── src/manager.ts [3 conflicts] ──
+
+  15:   resolveInheritedPromptTools,
+  16:   createInternalAgentTextPart,
+  17: } from "../../shared"
+  18: <<<<<<< HEAD
+  19: import { normalizeAgentForPrompt } from "../../shared/agent-display-names"
+  20: =======
+  21: import { applySessionPromptParams } from "../../shared/session-prompt-params-helpers"
+  22: >>>>>>> upstream/dev
+  23: import { setSessionTools } from "../../shared/session-tools-store"
+```
+
+Use `edit` with the full conflict block (including markers) as `oldString` to resolve each conflict.
+
+When a `git merge` or `git rebase` produces conflicts, the plugin automatically appends a hint
+suggesting `aft_conflicts` to the bash output.
+
+---
+
 ### aft_delete
 
 Delete a file with an in-memory backup. The backup survives for the session and can be restored
@@ -607,7 +644,7 @@ Both files are JSONC (comments allowed).
 
   // Tool surface level: "minimal" | "recommended" (default) | "all"
   // minimal:     aft_outline, aft_zoom, aft_safety only (no hoisting)
-  // recommended: minimal + hoisted tools + lsp_diagnostics + ast_grep + aft_import
+  // recommended: minimal + hoisted tools + lsp_diagnostics + ast_grep + aft_import + aft_conflicts
   // all:         recommended + aft_navigate, aft_delete, aft_move, aft_transform, aft_refactor
   "tool_surface": "recommended",
 
