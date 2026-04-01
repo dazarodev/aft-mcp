@@ -1,0 +1,49 @@
+
+# ── GSD baseline (auto-generated) ──
+.gsd/activity/
+.gsd/runtime/
+.gsd/worktrees/
+.gsd/auto.lock
+.gsd/metrics.json
+.gsd/completed-units.json
+.gsd/STATE.md
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+vendor/
+*.log
+coverage/
+.cache/
+tmp/
+
+
+# Added by cargo
+
+/target
+.sisyphus/
+local-ignore/
+
+# Nested lockfiles (root bun.lock is the source of truth)
+packages/opencode-plugin/package-lock.json
+ts-bench/
+
+# Benchmark configs (may contain API keys)
+benchmarks/configs/
+.opencode/dumps

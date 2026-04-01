@@ -1,0 +1,41 @@
+{
+  "name": "@cortexkit/aft-opencode",
+  "version": "0.7.3",
+  "type": "module",
+  "description": "OpenCode plugin for Agent File Tools (AFT) — tree-sitter and lsp powered code analysis",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cortexkit/aft"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "pretest": "cd ../.. && cargo build",
+    "test": "bun test",
+    "test:e2e": "bun test src/__tests__/e2e/",
+    "prepublishOnly": "tsc"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.2.26",
+    "jsonc-parser": "^3.3.1",
+    "zod": "^4.1.8"
+  },
+  "optionalDependencies": {
+    "@cortexkit/aft-darwin-arm64": "0.7.3",
+    "@cortexkit/aft-darwin-x64": "0.7.3",
+    "@cortexkit/aft-linux-arm64": "0.7.3",
+    "@cortexkit/aft-linux-x64": "0.7.3",
+    "@cortexkit/aft-win32-x64": "0.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}
