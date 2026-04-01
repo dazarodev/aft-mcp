@@ -144,14 +144,14 @@ mod tests {
     #[test]
     fn detect_indent_tabs() {
         let source = "fn main() {\n\tlet x = 1;\n\tlet y = 2;\n}\n";
-        assert_eq!(detect_indent(source, rust), IndentStyle::Tabs);
+        assert_eq!(detect_indent(source, "rust"), IndentStyle::Tabs);
     }
 
     #[test]
     fn detect_indent_two_spaces() {
         let source = "class Foo {\n  bar() {}\n  baz() {}\n}\n";
         assert_eq!(
-            detect_indent(source, typescript),
+            detect_indent(source, "typescript"),
             IndentStyle::Spaces(2)
         );
     }
@@ -161,26 +161,26 @@ mod tests {
         let source =
             "class Foo:\n    def bar(self):\n        pass\n    def baz(self):\n        pass\n";
         assert_eq!(
-            detect_indent(source, python),
+            detect_indent(source, "python"),
             IndentStyle::Spaces(4)
         );
     }
 
     #[test]
     fn detect_indent_empty_source_uses_default() {
-        assert_eq!(detect_indent("", python), IndentStyle::Spaces(4));
+        assert_eq!(detect_indent("", "python"), IndentStyle::Spaces(4));
         assert_eq!(
-            detect_indent("", typescript),
+            detect_indent("", "typescript"),
             IndentStyle::Spaces(2)
         );
-        assert_eq!(detect_indent("", go), IndentStyle::Tabs);
+        assert_eq!(detect_indent("", "go"), IndentStyle::Tabs);
     }
 
     #[test]
     fn detect_indent_no_indented_lines_uses_default() {
         let source = "x = 1\ny = 2\n";
         assert_eq!(
-            detect_indent(source, python),
+            detect_indent(source, "python"),
             IndentStyle::Spaces(4)
         );
     }
@@ -196,6 +196,6 @@ mod tests {
     fn detect_indent_four_spaces_with_nested() {
         // Lines indented at 4 and 8 should detect 4-space indent
         let source = "impl Foo {\n    fn bar() {\n        let x = 1;\n    }\n}\n";
-        assert_eq!(detect_indent(source, rust), IndentStyle::Spaces(4));
+        assert_eq!(detect_indent(source, "rust"), IndentStyle::Spaces(4));
     }
 }

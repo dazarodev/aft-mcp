@@ -1645,11 +1645,11 @@ import { c } from 'charlie';
     // --- Python parsing ---
 
     fn parse_py(source: &str) -> (Tree, ImportBlock) {
-        let grammar = grammar_for(python);
+        let grammar = grammar_for("python");
         let mut parser = Parser::new();
         parser.set_language(&grammar).unwrap();
         let tree = parser.parse(source, None).unwrap();
-        let block = parse_imports(source, &tree, python);
+        let block = parse_imports(source, &tree, "python");
         (tree, block)
     }
 

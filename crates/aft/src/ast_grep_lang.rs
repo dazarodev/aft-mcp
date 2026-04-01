@@ -136,14 +136,16 @@ impl Language for AstGrepLang {
 
 impl LanguageExt for AstGrepLang {
     fn get_ts_language(&self) -> TSLanguage {
-        match self {
-            Self::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
-            Self::Tsx => tree_sitter_typescript::LANGUAGE_TSX.into(),
-            Self::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
-            Self::Python => tree_sitter_python::LANGUAGE.into(),
-            Self::Rust => tree_sitter_rust::LANGUAGE.into(),
-            Self::Go => tree_sitter_go::LANGUAGE.into(),
-        }
+        use crate::parser::grammar_for;
+        let lang_id = match self {
+            Self::TypeScript => "typescript",
+            Self::Tsx => "tsx",
+            Self::JavaScript => "javascript",
+            Self::Python => "python",
+            Self::Rust => "rust",
+            Self::Go => "go",
+        };
+        grammar_for(lang_id).into()
     }
 }
 

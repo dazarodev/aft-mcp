@@ -1130,7 +1130,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_formatter(&path, rust, &config);
+        let result = detect_formatter(&path, "rust", &config);
         if tool_available("rustfmt") {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "rustfmt");
@@ -1149,7 +1149,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_formatter(&path, go, &config);
+        let result = detect_formatter(&path, "go", &config);
         if tool_available("goimports") {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "goimports");
@@ -1172,7 +1172,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_formatter(&path, python, &config);
+        let result = detect_formatter(&path, "python", &config);
         if ruff_format_available() {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "ruff");
@@ -1185,7 +1185,7 @@ mod tests {
     #[test]
     fn detect_formatter_no_config_returns_none() {
         let path = Path::new("test.ts");
-        let result = detect_formatter(path, typescript, &Config::default());
+        let result = detect_formatter(path, "typescript", &Config::default());
         assert!(
             result.is_none(),
             "expected no formatter without project config"
@@ -1199,7 +1199,7 @@ mod tests {
         config
             .formatter
             .insert("typescript".to_string(), "biome".to_string());
-        let result = detect_formatter(path, typescript, &config);
+        let result = detect_formatter(path, "typescript", &config);
         let (cmd, _) = result.unwrap();
         assert_eq!(cmd, "biome");
     }
@@ -1332,7 +1332,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_type_checker(&path, rust, &config);
+        let result = detect_type_checker(&path, "rust", &config);
         if tool_available("cargo") {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "cargo");
@@ -1351,7 +1351,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_type_checker(&path, go, &config);
+        let result = detect_type_checker(&path, "go", &config);
         if tool_available("go") {
             let (cmd, _args) = result.unwrap();
             // Could be staticcheck or go vet depending on what's installed

@@ -35,7 +35,7 @@ impl AftProcess {
     }
 
     fn spawn_inner(envs: &[(&str, &std::ffi::OsStr)], pipe_stderr: bool) -> Self {
-        let binary = env!("CARGO_BIN_EXE_aft");
+        let binary = env!("CARGO_BIN_EXE_aft-mcp");
         let mut command = Command::new(binary);
         command
             .stdin(Stdio::piped())

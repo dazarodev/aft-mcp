@@ -29,7 +29,7 @@ jobs:
         run: cargo test
 
       - name: Build aft binary (needed for e2e tests)
-        run: cargo build -p agent-file-tools
+        run: cargo build -p aft-mcp
 
       - name: Install JS dependencies
         run: bun install
@@ -53,7 +53,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Publish to crates.io
-        run: cargo publish --package agent-file-tools
+        run: cargo publish --package aft-mcp
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -72,12 +72,12 @@ jobs:
         run: cargo build --release --target aarch64-apple-darwin
 
       - name: Strip binary
-        run: strip target/aarch64-apple-darwin/release/aft
+        run: strip target/aarch64-apple-darwin/release/aft-mcp
 
       - uses: actions/upload-artifact@v4
         with:
           name: darwin-arm64
-          path: target/aarch64-apple-darwin/release/aft
+          path: target/aarch64-apple-darwin/release/aft-mcp
           if-no-files-found: error
 
   build-darwin-x64:
@@ -95,12 +95,12 @@ jobs:
         run: cargo build --release --target x86_64-apple-darwin
 
       - name: Strip binary
-        run: strip target/x86_64-apple-darwin/release/aft
+        run: strip target/x86_64-apple-darwin/release/aft-mcp
 
       - uses: actions/upload-artifact@v4
         with:
           name: darwin-x64
-          path: target/x86_64-apple-darwin/release/aft
+          path: target/x86_64-apple-darwin/release/aft-mcp
           if-no-files-found: error
 
   build-linux-arm64:
@@ -123,7 +123,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux-arm64
-          path: target/aarch64-unknown-linux-musl/release/aft
+          path: target/aarch64-unknown-linux-musl/release/aft-mcp
           if-no-files-found: error
 
   build-linux-x64:
@@ -146,7 +146,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux-x64
-          path: target/x86_64-unknown-linux-musl/release/aft
+          path: target/x86_64-unknown-linux-musl/release/aft-mcp
           if-no-files-found: error
 
   build-win32-x64:
@@ -166,7 +166,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: win32-x64
-          path: target/x86_64-pc-windows-msvc/release/aft.exe
+          path: target/x86_64-pc-windows-msvc/release/aft-mcp.exe
           if-no-files-found: error
 
   publish-npm:
@@ -225,10 +225,10 @@ jobs:
 
       - name: Set binary permissions
         run: |
-          chmod +x packages/npm/darwin-arm64/bin/aft
-          chmod +x packages/npm/darwin-x64/bin/aft
-          chmod +x packages/npm/linux-arm64/bin/aft
-          chmod +x packages/npm/linux-x64/bin/aft
+          chmod +x packages/npm/darwin-arm64/bin/aft-mcp
+          chmod +x packages/npm/darwin-x64/bin/aft-mcp
+          chmod +x packages/npm/linux-arm64/bin/aft-mcp
+          chmod +x packages/npm/linux-x64/bin/aft-mcp
 
       - name: Sync versions from tag
         run: node scripts/version-sync.mjs --from-tag
@@ -275,17 +275,17 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          cp artifacts/darwin-arm64/aft release-assets/aft-darwin-arm64
-          cp artifacts/darwin-x64/aft release-assets/aft-darwin-x64
-          cp artifacts/linux-arm64/aft release-assets/aft-linux-arm64
-          cp artifacts/linux-x64/aft release-assets/aft-linux-x64
-          cp artifacts/win32-x64/aft.exe release-assets/aft-win32-x64.exe
-          chmod +x release-assets/aft-*
+          cp artifacts/darwin-arm64/aft-mcp release-assets/aft-mcp-darwin-arm64
+          cp artifacts/darwin-x64/aft-mcp release-assets/aft-mcp-darwin-x64
+          cp artifacts/linux-arm64/aft-mcp release-assets/aft-mcp-linux-arm64
+          cp artifacts/linux-x64/aft-mcp release-assets/aft-mcp-linux-x64
+          cp artifacts/win32-x64/aft-mcp.exe release-assets/aft-mcp-win32-x64.exe
+          chmod +x release-assets/aft-mcp-*
 
       - name: Generate checksums
         run: |
           cd release-assets
-          shasum -a 256 aft-* > checksums.sha256
+          shasum -a 256 aft-mcp-* > checksums.sha256
           cat checksums.sha256
 
       - name: Create GitHub Release

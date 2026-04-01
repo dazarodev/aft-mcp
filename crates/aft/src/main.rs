@@ -10,9 +10,10 @@ use std::collections::HashSet;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use aft::config::Config;
+use aft::config::{AftConfig, Config};
 use aft::context::AppContext;
-use aft::parser::TreeSitterProvider;
+use aft::lang::LangRegistry;
+use aft::parser::{init_lang_registry, TreeSitterProvider};
 use aft::protocol::{RawRequest, Response};
 
 use serde_json::{json, Value};
@@ -44,6 +45,14 @@ fn main() {
         .init();
 
     log::info!("started, pid {}", std::process::id());
+
+    // Load project-level config (aft.toml) and initialize language registry
+    let aft_config = AftConfig::load();
+    let mut registry = LangRegistry::new();
+    if let Some(ref active) = aft_config.languages {
+        registry.retain(active);
+    }
+    init_lang_registry(registry);
 
     let ctx = AppContext::new(Box::new(TreeSitterProvider::new()), Config::default());
 
@@ -311,7 +320,11 @@ fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
 // File watcher (from original main.rs)
 // ---------------------------------------------------------------------------
 
-const SOURCE_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "py", "rs", "go", "css", "html", "htm", "cls", "trigger", "apex"];
+const SOURCE_EXTENSIONS: &[&str] = &[
+    "ts", "tsx", "js", "jsx", "py", "rs", "go", "css", "html", "htm",
+    "cls", "trigger", "apex", "java", "rb", "c", "h", "cpp", "cc",
+    "cxx", "hpp", "cs", "php",
+];
 
 fn drain_watcher_events(ctx: &AppContext) {
     let changed: HashSet<std::path::PathBuf> = {
@@ -367,6 +380,7 @@ fn collect_source_files(dir: &std::path::Path, out: &mut Vec<String>) {
     const SOURCE_EXTS: &[&str] = &[
         "ts", "tsx", "js", "jsx", "py", "rs", "go", "md", "mdx",
         "css", "html", "htm", "cls", "trigger", "apex",
+        "java", "rb", "c", "h", "cpp", "cc", "cxx", "hpp", "cs", "php",
     ];
     const SKIP_DIRS: &[&str] = &[
         "node_modules", ".next", ".git", ".claude", "target", "__pycache__",

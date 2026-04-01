@@ -998,7 +998,7 @@ mod tests {
     fn free_vars_detects_enclosing_function_params() {
         // `items` and `prefix` are function params → should be detected as free variables
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         // Lines 5-8 (0-indexed): the body of processData that uses `items` and `prefix`
         // "  const filtered = items.filter(item => item.length > 0);"
@@ -1008,7 +1008,7 @@ mod tests {
         let line6_end = crate::edit::line_col_to_byte(&source, 7, 0);
 
         let result =
-            detect_free_variables(&source, &tree, line5_start, line6_end, typescript);
+            detect_free_variables(&source, &tree, line5_start, line6_end, "typescript");
         assert!(
             result.parameters.contains(&"items".to_string()),
             "should detect 'items' as parameter, got: {:?}",
@@ -1029,13 +1029,13 @@ mod tests {
         // In `items.filter(...)`, `filter` should NOT be a free variable.
         // In `item.length`, `length` should NOT be a free variable.
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         let line5_start = crate::edit::line_col_to_byte(&source, 5, 0);
         let line6_end = crate::edit::line_col_to_byte(&source, 7, 0);
 
         let result =
-            detect_free_variables(&source, &tree, line5_start, line6_end, typescript);
+            detect_free_variables(&source, &tree, line5_start, line6_end, "typescript");
         // "filter", "map", "length" should NOT appear
         assert!(
             !result.parameters.contains(&"filter".to_string()),
@@ -1058,13 +1058,13 @@ mod tests {
         // `BASE_URL` is module-level → should NOT be a parameter
         // `console` is a global → should NOT be a parameter
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         // processData body: lines 5-9
         let start = crate::edit::line_col_to_byte(&source, 5, 0);
         let end = crate::edit::line_col_to_byte(&source, 10, 0);
 
-        let result = detect_free_variables(&source, &tree, start, end, typescript);
+        let result = detect_free_variables(&source, &tree, start, end, "typescript");
         assert!(
             !result.parameters.contains(&"BASE_URL".to_string()),
             "module-level 'BASE_URL' should not be a parameter, got: {:?}",
@@ -1082,13 +1082,13 @@ mod tests {
     #[test]
     fn free_vars_detects_this_in_ts() {
         let source = std::fs::read_to_string(fixture_path("sample_this.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         // getUser method body lines 4-6 contain `this.users.get(key)`
         let start = crate::edit::line_col_to_byte(&source, 4, 0);
         let end = crate::edit::line_col_to_byte(&source, 7, 0);
 
-        let result = detect_free_variables(&source, &tree, start, end, typescript);
+        let result = detect_free_variables(&source, &tree, start, end, "typescript");
         assert!(result.has_this_or_self, "should detect 'this' reference");
     }
 
@@ -1101,13 +1101,13 @@ class UserService:
         user = self.users.get(key)
         return user
 "#;
-        let tree = parse_source(source, python);
+        let tree = parse_source(&source, "python");
 
         // Lines 3-4 (0-indexed) contain `self.users.get(key)`
         let start = crate::edit::line_col_to_byte(source, 4, 0);
         let end = crate::edit::line_col_to_byte(source, 5, 0);
 
-        let result = detect_free_variables(source, &tree, start, end, python);
+        let result = detect_free_variables(source, &tree, start, end, "python");
         assert!(result.has_this_or_self, "should detect 'self' reference");
     }
 
@@ -1116,20 +1116,20 @@ class UserService:
     #[test]
     fn return_value_explicit_return() {
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         // simpleHelper: lines 13-16 — contains "return added;"
         let start = crate::edit::line_col_to_byte(&source, 14, 0);
         let end = crate::edit::line_col_to_byte(&source, 17, 0);
 
-        let result = detect_return_value(&source, &tree, start, end, None, typescript);
+        let result = detect_return_value(&source, &tree, start, end, None, "typescript");
         assert_eq!(result, ReturnKind::Expression("added".to_string()));
     }
 
     #[test]
     fn return_value_post_range_usage() {
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         // processData lines 5-7: declares `filtered`, `mapped`
         // Lines 7-9 use `result` (which comes after mapped), but line 7 declares `result`
@@ -1142,7 +1142,7 @@ class UserService:
         let fn_end = crate::edit::line_col_to_byte(&source, 10, 0);
 
         let result =
-            detect_return_value(&source, &tree, start, end, Some(fn_end), typescript);
+            detect_return_value(&source, &tree, start, end, Some(fn_end), "typescript");
         // `filtered` is declared in-range and used after the range
         assert_eq!(result, ReturnKind::Variable("filtered".to_string()));
     }
@@ -1150,7 +1150,7 @@ class UserService:
     #[test]
     fn return_value_void() {
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, typescript);
+        let tree = parse_source(&source, "typescript");
 
         // voidWork lines 20-21: no return, `greeting` is only used within
         let start = crate::edit::line_col_to_byte(&source, 20, 0);
@@ -1162,7 +1162,7 @@ class UserService:
             start,
             end,
             Some(crate::edit::line_col_to_byte(&source, 23, 0)),
-            typescript,
+            "typescript",
         );
         assert_eq!(result, ReturnKind::Void);
     }
@@ -1178,7 +1178,7 @@ class UserService:
             &ReturnKind::Variable("added".to_string()),
             body,
             "",
-            typescript,
+            "typescript",
             IndentStyle::Spaces(2),
         );
         assert!(result.contains("function compute(x)"));
@@ -1195,7 +1195,7 @@ class UserService:
             &ReturnKind::Variable("added".to_string()),
             body,
             "",
-            python,
+            "python",
             IndentStyle::Spaces(4),
         );
         assert!(result.contains("def compute(x):"));
@@ -1209,7 +1209,7 @@ class UserService:
             &["x".to_string()],
             &ReturnKind::Variable("result".to_string()),
             "  ",
-            typescript,
+            "typescript",
         );
         assert_eq!(call, "  const result = compute(x);");
     }
@@ -1221,7 +1221,7 @@ class UserService:
             &["a".to_string(), "b".to_string()],
             &ReturnKind::Void,
             "  ",
-            typescript,
+            "typescript",
         );
         assert_eq!(call, "  doWork(a, b);");
     }
@@ -1233,7 +1233,7 @@ class UserService:
             &["x".to_string()],
             &ReturnKind::Expression("x * 2".to_string()),
             "  ",
-            typescript,
+            "typescript",
         );
         assert_eq!(call, "  return compute(x);");
     }
@@ -1243,13 +1243,13 @@ class UserService:
     #[test]
     fn free_vars_python_function_params() {
         let source = std::fs::read_to_string(fixture_path("sample.py")).unwrap();
-        let tree = parse_source(&source, python);
+        let tree = parse_source(&source, "python");
 
         // process_data body: lines 5-8 reference `items` and `prefix`
         let start = crate::edit::line_col_to_byte(&source, 5, 0);
         let end = crate::edit::line_col_to_byte(&source, 7, 0);
 
-        let result = detect_free_variables(&source, &tree, start, end, python);
+        let result = detect_free_variables(&source, &tree, start, end, "python");
         assert!(
             result.parameters.contains(&"items".to_string()),
             "should detect 'items': {:?}",
@@ -1269,41 +1269,41 @@ class UserService:
     fn validate_single_return_single() {
         let source =
             "function add(a: number, b: number): number {\n  const sum = a + b;\n  return sum;\n}";
-        let tree = parse_source(source, typescript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         let fn_node = root.child(0).unwrap(); // function_declaration
-        assert!(validate_single_return(source, &tree, &fn_node, typescript).is_ok());
+        assert!(validate_single_return(source, &tree, &fn_node, "typescript").is_ok());
     }
 
     #[test]
     fn validate_single_return_void() {
         let source = "function greet(name: string): void {\n  console.log(name);\n}";
-        let tree = parse_source(source, typescript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         let fn_node = root.child(0).unwrap();
-        assert!(validate_single_return(source, &tree, &fn_node, typescript).is_ok());
+        assert!(validate_single_return(source, &tree, &fn_node, "typescript").is_ok());
     }
 
     #[test]
     fn validate_single_return_expression_body() {
         let source = "const double = (n: number): number => n * 2;";
-        let tree = parse_source(source, typescript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         // lexical_declaration > variable_declarator > arrow_function
         let lex_decl = root.child(0).unwrap();
         let var_decl = lex_decl.child(1).unwrap(); // variable_declarator
         let arrow = var_decl.child_by_field_name("value").unwrap();
         assert_eq!(arrow.kind(), "arrow_function");
-        assert!(validate_single_return(source, &tree, &arrow, typescript).is_ok());
+        assert!(validate_single_return(source, &tree, &arrow, "typescript").is_ok());
     }
 
     #[test]
     fn validate_single_return_multiple() {
         let source = "function abs(x: number): number {\n  if (x > 0) {\n    return x;\n  }\n  return -x;\n}";
-        let tree = parse_source(source, typescript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         let fn_node = root.child(0).unwrap();
-        let result = validate_single_return(source, &tree, &fn_node, typescript);
+        let result = validate_single_return(source, &tree, &fn_node, "typescript");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), 2);
     }
@@ -1314,11 +1314,11 @@ class UserService:
     fn scope_conflicts_none() {
         // No overlap between call site scope and body vars
         let source = "function main() {\n  const x = 10;\n  const y = add(x, 5);\n}";
-        let tree = parse_source(source, typescript);
+        let tree = parse_source(&source, "typescript");
         let body_text = "const sum = a + b;";
         let call_byte = crate::edit::line_col_to_byte(source, 2, 0);
         let conflicts =
-            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, typescript);
+            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, "typescript");
         assert!(
             conflicts.is_empty(),
             "expected no conflicts, got: {:?}",
@@ -1330,11 +1330,11 @@ class UserService:
     fn scope_conflicts_detected() {
         // `temp` exists at call site and inside body
         let source = "function main() {\n  const temp = 99;\n  const result = compute(5);\n}";
-        let tree = parse_source(source, typescript);
+        let tree = parse_source(&source, "typescript");
         let body_text = "const temp = x * 2;\nconst result2 = temp + 10;";
         let call_byte = crate::edit::line_col_to_byte(source, 2, 0);
         let conflicts =
-            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, typescript);
+            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, "typescript");
         assert!(!conflicts.is_empty(), "expected conflict for 'temp'");
         assert!(
             conflicts.iter().any(|c| c.name == "temp"),
@@ -1355,7 +1355,7 @@ class UserService:
         let mut map = std::collections::HashMap::new();
         map.insert("a".to_string(), "x".to_string());
         map.insert("b".to_string(), "y".to_string());
-        let result = substitute_params(body, &map, typescript);
+        let result = substitute_params(body, &map, "typescript");
         assert_eq!(result, "const sum = x + y;");
     }
 
@@ -1365,7 +1365,7 @@ class UserService:
         let body = "const result = items.filter(i => i > 0);";
         let mut map = std::collections::HashMap::new();
         map.insert("i".to_string(), "index".to_string());
-        let result = substitute_params(body, &map, typescript);
+        let result = substitute_params(body, &map, "typescript");
         // `items` should be untouched, but the arrow param `i` and its use `i` should be replaced
         assert!(
             !result.contains("items") || result.contains("items"),
@@ -1384,7 +1384,7 @@ class UserService:
         let body = "const sum = x + y;";
         let mut map = std::collections::HashMap::new();
         map.insert("x".to_string(), "x".to_string());
-        let result = substitute_params(body, &map, typescript);
+        let result = substitute_params(body, &map, "typescript");
         assert_eq!(result, "const sum = x + y;");
     }
 
@@ -1392,7 +1392,7 @@ class UserService:
     fn substitute_params_empty_map() {
         let body = "const sum = a + b;";
         let map = std::collections::HashMap::new();
-        let result = substitute_params(body, &map, typescript);
+        let result = substitute_params(body, &map, "typescript");
         assert_eq!(result, body);
     }
 }
