@@ -1,0 +1,6 @@
+{
+  "aft": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/aft-mcp",
+    "args": []
+  }
+}

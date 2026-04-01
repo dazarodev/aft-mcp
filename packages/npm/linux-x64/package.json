@@ -1,5 +1,5 @@
 {
-  "name": "@cortexkit/aft-linux-x64",
+  "name": "@dazarodev/aft-mcp-linux-x64",
   "version": "0.7.3",
   "description": "AFT binary for Linux x64",
   "os": [
@@ -10,11 +10,11 @@
   ],
   "preferUnplugged": true,
   "bin": {
-    "aft": "bin/aft"
+    "aft-mcp": "bin/aft-mcp"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cortexkit/aft"
+    "url": "https://github.com/dazarodev/aft-mcp"
   }
 }

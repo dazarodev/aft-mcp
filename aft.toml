@@ -1,0 +1,8 @@
+# aft.toml — place in project root or ~/.config/aft/config.toml
+#
+# Which compiled-in languages to activate (default: all).
+# Reduces noise in outline/callers for projects that only use certain languages.
+# languages = ["typescript", "javascript", "python", "css", "html"]
+#
+# Project root override (default: auto-detect from CWD).
+# root = "/path/to/project"

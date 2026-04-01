@@ -33,11 +33,11 @@ impl IndentStyle {
     /// Language-specific default when detection has low confidence.
     pub fn default_for(lang: LangId) -> Self {
         match lang {
-            LangId::Python => IndentStyle::Spaces(4),
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => IndentStyle::Spaces(2),
-            LangId::Rust => IndentStyle::Spaces(4),
-            LangId::Go => IndentStyle::Tabs,
-            LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => IndentStyle::Spaces(4),
+            "python" => IndentStyle::Spaces(4),
+            "typescript" | "tsx" | "javascript" => IndentStyle::Spaces(2),
+            "rust" => IndentStyle::Spaces(4),
+            "go" => IndentStyle::Tabs,
+            _ => IndentStyle::Spaces(4),
         }
     }
 }
@@ -144,14 +144,14 @@ mod tests {
     #[test]
     fn detect_indent_tabs() {
         let source = "fn main() {\n\tlet x = 1;\n\tlet y = 2;\n}\n";
-        assert_eq!(detect_indent(source, LangId::Rust), IndentStyle::Tabs);
+        assert_eq!(detect_indent(source, "rust"), IndentStyle::Tabs);
     }
 
     #[test]
     fn detect_indent_two_spaces() {
         let source = "class Foo {\n  bar() {}\n  baz() {}\n}\n";
         assert_eq!(
-            detect_indent(source, LangId::TypeScript),
+            detect_indent(source, "typescript"),
             IndentStyle::Spaces(2)
         );
     }
@@ -161,26 +161,26 @@ mod tests {
         let source =
             "class Foo:\n    def bar(self):\n        pass\n    def baz(self):\n        pass\n";
         assert_eq!(
-            detect_indent(source, LangId::Python),
+            detect_indent(source, "python"),
             IndentStyle::Spaces(4)
         );
     }
 
     #[test]
     fn detect_indent_empty_source_uses_default() {
-        assert_eq!(detect_indent("", LangId::Python), IndentStyle::Spaces(4));
+        assert_eq!(detect_indent("", "python"), IndentStyle::Spaces(4));
         assert_eq!(
-            detect_indent("", LangId::TypeScript),
+            detect_indent("", "typescript"),
             IndentStyle::Spaces(2)
         );
-        assert_eq!(detect_indent("", LangId::Go), IndentStyle::Tabs);
+        assert_eq!(detect_indent("", "go"), IndentStyle::Tabs);
     }
 
     #[test]
     fn detect_indent_no_indented_lines_uses_default() {
         let source = "x = 1\ny = 2\n";
         assert_eq!(
-            detect_indent(source, LangId::Python),
+            detect_indent(source, "python"),
             IndentStyle::Spaces(4)
         );
     }
@@ -196,6 +196,6 @@ mod tests {
     fn detect_indent_four_spaces_with_nested() {
         // Lines indented at 4 and 8 should detect 4-space indent
         let source = "impl Foo {\n    fn bar() {\n        let x = 1;\n    }\n}\n";
-        assert_eq!(detect_indent(source, LangId::Rust), IndentStyle::Spaces(4));
+        assert_eq!(detect_indent(source, "rust"), IndentStyle::Spaces(4));
     }
 }

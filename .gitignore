@@ -35,8 +35,10 @@ tmp/
 
 
 # Added by cargo
-
 /target
+
+# Downloaded binary (install.sh puts it here)
+/bin/
 .sisyphus/
 local-ignore/
 
