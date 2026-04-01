@@ -9,12 +9,13 @@ use crate::parser::LangId;
 /// for the given language.
 pub fn call_node_kinds(lang: LangId) -> Vec<&'static str> {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript | LangId::Go => {
+        "typescript" | "tsx" | "javascript" | "go" => {
             vec!["call_expression"]
         }
-        LangId::Python => vec!["call"],
-        LangId::Rust => vec!["call_expression", "macro_invocation"],
-        LangId::Markdown => vec![],
+        "python" => vec!["call"],
+        "rust" => vec!["call_expression", "macro_invocation"],
+        "markdown" | "css" | "html" | "apex" => vec![],
+        _ => vec![],
     }
 }
 

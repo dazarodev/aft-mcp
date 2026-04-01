@@ -7,7 +7,7 @@ use tree_sitter::{Node, Parser};
 
 use crate::context::AppContext;
 use crate::edit;
-use crate::parser::{detect_language, grammar_for, node_text, LangId};
+use crate::parser::{detect_language, grammar_for, node_text};
 use crate::protocol::{RawRequest, Response};
 
 /// Handle an `add_derive` request.
@@ -88,7 +88,7 @@ pub fn handle_add_derive(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
-    if !matches!(lang, LangId::Rust) {
+    if lang != "rust" {
         return Response::error(
             &req.id,
             "invalid_request",

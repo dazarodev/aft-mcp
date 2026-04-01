@@ -9,7 +9,7 @@ use std::path::Path;
 use crate::context::AppContext;
 use crate::edit;
 use crate::imports;
-use crate::parser::{detect_language, LangId};
+use crate::parser::detect_language;
 use crate::protocol::{RawRequest, Response};
 
 /// Handle an `add_import` request.
@@ -141,7 +141,7 @@ pub fn handle_add_import(req: &RawRequest, ctx: &AppContext) -> Response {
 
     // --- Generate import line ---
     // For Go, check if we're inserting into a grouped import block
-    let import_line = if matches!(lang, LangId::Go) {
+    let import_line = if lang == "go" {
         let in_group = imports::go_has_grouped_import(&source, &tree).is_some();
         imports::generate_go_import_line_pub(module, default_import.as_deref(), in_group)
     } else {

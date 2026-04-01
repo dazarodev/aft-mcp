@@ -146,7 +146,7 @@ fn is_property_access(node: &Node, lang: LangId) -> bool {
     if let Some(parent) = node.parent() {
         let pk = parent.kind();
         match lang {
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 // member_expression: object.property — the "property" child
                 if pk == "member_expression" {
                     if let Some(prop) = parent.child_by_field_name("property") {
@@ -154,7 +154,7 @@ fn is_property_access(node: &Node, lang: LangId) -> bool {
                     }
                 }
             }
-            LangId::Python => {
+            "python" => {
                 // attribute: object.attr — the "attribute" child
                 if pk == "attribute" {
                     if let Some(attr) = parent.child_by_field_name("attribute") {
@@ -171,11 +171,11 @@ fn is_property_access(node: &Node, lang: LangId) -> bool {
 /// Identifiers that are language keywords and should not be treated as free variables.
 fn is_keyword(name: &str, lang: LangId) -> bool {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => matches!(
+        "typescript" | "tsx" | "javascript" => matches!(
             name,
             "undefined" | "null" | "true" | "false" | "NaN" | "Infinity" | "console" | "require"
         ),
-        LangId::Python => matches!(
+        "python" => matches!(
             name,
             "None"
                 | "True"
@@ -249,7 +249,7 @@ fn collect_declarations_in_range(
     let kind = node.kind();
 
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             // variable_declarator has a "name" child that is the declared identifier
             if kind == "variable_declarator" {
                 if let Some(name_node) = node.child_by_field_name("name") {
@@ -259,7 +259,7 @@ fn collect_declarations_in_range(
                 }
             }
         }
-        LangId::Python => {
+        "python" => {
             // assignment: left side
             if kind == "assignment" {
                 if let Some(left) = node.child_by_field_name("left") {
@@ -290,7 +290,7 @@ fn collect_declarations_in_range(
 /// Collect parameter names from a function node.
 fn collect_function_params(fn_node: &Node, source: &str, lang: LangId, out: &mut HashSet<String>) {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             // function_declaration / arrow_function have "parameters" field
             if let Some(params) = fn_node.child_by_field_name("parameters") {
                 collect_param_identifiers(&params, source, lang, out);
@@ -315,7 +315,7 @@ fn collect_function_params(fn_node: &Node, source: &str, lang: LangId, out: &mut
                 }
             }
         }
-        LangId::Python => {
+        "python" => {
             if let Some(params) = fn_node.child_by_field_name("parameters") {
                 collect_param_identifiers(&params, source, lang, out);
             }
@@ -336,7 +336,7 @@ fn collect_param_identifiers(
         loop {
             let child = cursor.node();
             match lang {
-                LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+                "typescript" | "tsx" | "javascript" => {
                     // required_parameter, optional_parameter have pattern child,
                     // or directly identifier
                     if child.kind() == "required_parameter" || child.kind() == "optional_parameter"
@@ -350,7 +350,7 @@ fn collect_param_identifiers(
                         out.insert(node_text(source, &child).to_string());
                     }
                 }
-                LangId::Python => {
+                "python" => {
                     if child.kind() == "identifier" {
                         let name = node_text(source, &child).to_string();
                         // Skip `self` parameter
@@ -371,7 +371,7 @@ fn collect_param_identifiers(
 /// Find the innermost function node that encloses `byte_pos`.
 fn find_enclosing_function<'a>(root: &Node<'a>, byte_pos: usize, lang: LangId) -> Option<Node<'a>> {
     let fn_kinds: &[&str] = match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             &[
                 "function_declaration",
                 "method_definition",
@@ -379,7 +379,7 @@ fn find_enclosing_function<'a>(root: &Node<'a>, byte_pos: usize, lang: LangId) -
                 "lexical_declaration", // for const foo = () => ...
             ]
         }
-        LangId::Python => &["function_definition"],
+        "python" => &["function_definition"],
         _ => &[],
     };
 
@@ -422,12 +422,12 @@ fn check_this_or_self(
     if node.start_byte() >= start_byte && node.end_byte() <= end_byte {
         let kind = node.kind();
         match lang {
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 if kind == "this" {
                     return true;
                 }
             }
-            LangId::Python => {
+            "python" => {
                 if kind == "identifier" && node_text(source, node) == "self" {
                     // Check it's not a parameter declaration (like `def foo(self):`)
                     if let Some(parent) = node.parent() {
@@ -591,7 +591,7 @@ pub fn generate_extracted_function(
     let indent_unit = indent_style.as_str();
 
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => generate_ts_function(
+        "typescript" | "tsx" | "javascript" => generate_ts_function(
             name,
             params,
             return_kind,
@@ -599,7 +599,7 @@ pub fn generate_extracted_function(
             base_indent,
             indent_unit,
         ),
-        LangId::Python => generate_py_function(
+        "python" => generate_py_function(
             name,
             params,
             return_kind,
@@ -709,28 +709,28 @@ pub fn generate_call_site(
 
     match return_kind {
         ReturnKind::Variable(var) => match lang {
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 format!("{}const {} = {}({});", indent, var, name, args_str)
             }
-            LangId::Python => {
+            "python" => {
                 format!("{}{} = {}({})", indent, var, name, args_str)
             }
             _ => format!("{}const {} = {}({});", indent, var, name, args_str),
         },
         ReturnKind::Expression(_expr) => match lang {
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 format!("{}return {}({});", indent, name, args_str)
             }
-            LangId::Python => {
+            "python" => {
                 format!("{}return {}({})", indent, name, args_str)
             }
             _ => format!("{}return {}({});", indent, name, args_str),
         },
         ReturnKind::Void => match lang {
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 format!("{}{}({});", indent, name, args_str)
             }
-            LangId::Python => {
+            "python" => {
                 format!("{}{}({})", indent, name, args_str)
             }
             _ => format!("{}{}({});", indent, name, args_str),
@@ -841,7 +841,7 @@ pub fn validate_single_return(
     lang: LangId,
 ) -> Result<(), usize> {
     // Arrow functions with expression bodies are always single-return
-    if lang != LangId::Python && fn_node.kind() == "arrow_function" {
+    if lang != "python" && fn_node.kind() == "arrow_function" {
         if let Some(body) = fn_node.child_by_field_name("body") {
             if body.kind() != "statement_block" {
                 // Expression body — implicitly single-return
@@ -998,7 +998,7 @@ mod tests {
     fn free_vars_detects_enclosing_function_params() {
         // `items` and `prefix` are function params → should be detected as free variables
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         // Lines 5-8 (0-indexed): the body of processData that uses `items` and `prefix`
         // "  const filtered = items.filter(item => item.length > 0);"
@@ -1008,7 +1008,7 @@ mod tests {
         let line6_end = crate::edit::line_col_to_byte(&source, 7, 0);
 
         let result =
-            detect_free_variables(&source, &tree, line5_start, line6_end, LangId::TypeScript);
+            detect_free_variables(&source, &tree, line5_start, line6_end, "typescript");
         assert!(
             result.parameters.contains(&"items".to_string()),
             "should detect 'items' as parameter, got: {:?}",
@@ -1029,13 +1029,13 @@ mod tests {
         // In `items.filter(...)`, `filter` should NOT be a free variable.
         // In `item.length`, `length` should NOT be a free variable.
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         let line5_start = crate::edit::line_col_to_byte(&source, 5, 0);
         let line6_end = crate::edit::line_col_to_byte(&source, 7, 0);
 
         let result =
-            detect_free_variables(&source, &tree, line5_start, line6_end, LangId::TypeScript);
+            detect_free_variables(&source, &tree, line5_start, line6_end, "typescript");
         // "filter", "map", "length" should NOT appear
         assert!(
             !result.parameters.contains(&"filter".to_string()),
@@ -1058,13 +1058,13 @@ mod tests {
         // `BASE_URL` is module-level → should NOT be a parameter
         // `console` is a global → should NOT be a parameter
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         // processData body: lines 5-9
         let start = crate::edit::line_col_to_byte(&source, 5, 0);
         let end = crate::edit::line_col_to_byte(&source, 10, 0);
 
-        let result = detect_free_variables(&source, &tree, start, end, LangId::TypeScript);
+        let result = detect_free_variables(&source, &tree, start, end, "typescript");
         assert!(
             !result.parameters.contains(&"BASE_URL".to_string()),
             "module-level 'BASE_URL' should not be a parameter, got: {:?}",
@@ -1082,13 +1082,13 @@ mod tests {
     #[test]
     fn free_vars_detects_this_in_ts() {
         let source = std::fs::read_to_string(fixture_path("sample_this.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         // getUser method body lines 4-6 contain `this.users.get(key)`
         let start = crate::edit::line_col_to_byte(&source, 4, 0);
         let end = crate::edit::line_col_to_byte(&source, 7, 0);
 
-        let result = detect_free_variables(&source, &tree, start, end, LangId::TypeScript);
+        let result = detect_free_variables(&source, &tree, start, end, "typescript");
         assert!(result.has_this_or_self, "should detect 'this' reference");
     }
 
@@ -1101,13 +1101,13 @@ class UserService:
         user = self.users.get(key)
         return user
 "#;
-        let tree = parse_source(source, LangId::Python);
+        let tree = parse_source(&source, "python");
 
         // Lines 3-4 (0-indexed) contain `self.users.get(key)`
         let start = crate::edit::line_col_to_byte(source, 4, 0);
         let end = crate::edit::line_col_to_byte(source, 5, 0);
 
-        let result = detect_free_variables(source, &tree, start, end, LangId::Python);
+        let result = detect_free_variables(source, &tree, start, end, "python");
         assert!(result.has_this_or_self, "should detect 'self' reference");
     }
 
@@ -1116,20 +1116,20 @@ class UserService:
     #[test]
     fn return_value_explicit_return() {
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         // simpleHelper: lines 13-16 — contains "return added;"
         let start = crate::edit::line_col_to_byte(&source, 14, 0);
         let end = crate::edit::line_col_to_byte(&source, 17, 0);
 
-        let result = detect_return_value(&source, &tree, start, end, None, LangId::TypeScript);
+        let result = detect_return_value(&source, &tree, start, end, None, "typescript");
         assert_eq!(result, ReturnKind::Expression("added".to_string()));
     }
 
     #[test]
     fn return_value_post_range_usage() {
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         // processData lines 5-7: declares `filtered`, `mapped`
         // Lines 7-9 use `result` (which comes after mapped), but line 7 declares `result`
@@ -1142,7 +1142,7 @@ class UserService:
         let fn_end = crate::edit::line_col_to_byte(&source, 10, 0);
 
         let result =
-            detect_return_value(&source, &tree, start, end, Some(fn_end), LangId::TypeScript);
+            detect_return_value(&source, &tree, start, end, Some(fn_end), "typescript");
         // `filtered` is declared in-range and used after the range
         assert_eq!(result, ReturnKind::Variable("filtered".to_string()));
     }
@@ -1150,7 +1150,7 @@ class UserService:
     #[test]
     fn return_value_void() {
         let source = std::fs::read_to_string(fixture_path("sample.ts")).unwrap();
-        let tree = parse_source(&source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
 
         // voidWork lines 20-21: no return, `greeting` is only used within
         let start = crate::edit::line_col_to_byte(&source, 20, 0);
@@ -1162,7 +1162,7 @@ class UserService:
             start,
             end,
             Some(crate::edit::line_col_to_byte(&source, 23, 0)),
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(result, ReturnKind::Void);
     }
@@ -1178,7 +1178,7 @@ class UserService:
             &ReturnKind::Variable("added".to_string()),
             body,
             "",
-            LangId::TypeScript,
+            "typescript",
             IndentStyle::Spaces(2),
         );
         assert!(result.contains("function compute(x)"));
@@ -1195,7 +1195,7 @@ class UserService:
             &ReturnKind::Variable("added".to_string()),
             body,
             "",
-            LangId::Python,
+            "python",
             IndentStyle::Spaces(4),
         );
         assert!(result.contains("def compute(x):"));
@@ -1209,7 +1209,7 @@ class UserService:
             &["x".to_string()],
             &ReturnKind::Variable("result".to_string()),
             "  ",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(call, "  const result = compute(x);");
     }
@@ -1221,7 +1221,7 @@ class UserService:
             &["a".to_string(), "b".to_string()],
             &ReturnKind::Void,
             "  ",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(call, "  doWork(a, b);");
     }
@@ -1233,7 +1233,7 @@ class UserService:
             &["x".to_string()],
             &ReturnKind::Expression("x * 2".to_string()),
             "  ",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(call, "  return compute(x);");
     }
@@ -1243,13 +1243,13 @@ class UserService:
     #[test]
     fn free_vars_python_function_params() {
         let source = std::fs::read_to_string(fixture_path("sample.py")).unwrap();
-        let tree = parse_source(&source, LangId::Python);
+        let tree = parse_source(&source, "python");
 
         // process_data body: lines 5-8 reference `items` and `prefix`
         let start = crate::edit::line_col_to_byte(&source, 5, 0);
         let end = crate::edit::line_col_to_byte(&source, 7, 0);
 
-        let result = detect_free_variables(&source, &tree, start, end, LangId::Python);
+        let result = detect_free_variables(&source, &tree, start, end, "python");
         assert!(
             result.parameters.contains(&"items".to_string()),
             "should detect 'items': {:?}",
@@ -1269,41 +1269,41 @@ class UserService:
     fn validate_single_return_single() {
         let source =
             "function add(a: number, b: number): number {\n  const sum = a + b;\n  return sum;\n}";
-        let tree = parse_source(source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         let fn_node = root.child(0).unwrap(); // function_declaration
-        assert!(validate_single_return(source, &tree, &fn_node, LangId::TypeScript).is_ok());
+        assert!(validate_single_return(source, &tree, &fn_node, "typescript").is_ok());
     }
 
     #[test]
     fn validate_single_return_void() {
         let source = "function greet(name: string): void {\n  console.log(name);\n}";
-        let tree = parse_source(source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         let fn_node = root.child(0).unwrap();
-        assert!(validate_single_return(source, &tree, &fn_node, LangId::TypeScript).is_ok());
+        assert!(validate_single_return(source, &tree, &fn_node, "typescript").is_ok());
     }
 
     #[test]
     fn validate_single_return_expression_body() {
         let source = "const double = (n: number): number => n * 2;";
-        let tree = parse_source(source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         // lexical_declaration > variable_declarator > arrow_function
         let lex_decl = root.child(0).unwrap();
         let var_decl = lex_decl.child(1).unwrap(); // variable_declarator
         let arrow = var_decl.child_by_field_name("value").unwrap();
         assert_eq!(arrow.kind(), "arrow_function");
-        assert!(validate_single_return(source, &tree, &arrow, LangId::TypeScript).is_ok());
+        assert!(validate_single_return(source, &tree, &arrow, "typescript").is_ok());
     }
 
     #[test]
     fn validate_single_return_multiple() {
         let source = "function abs(x: number): number {\n  if (x > 0) {\n    return x;\n  }\n  return -x;\n}";
-        let tree = parse_source(source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
         let root = tree.root_node();
         let fn_node = root.child(0).unwrap();
-        let result = validate_single_return(source, &tree, &fn_node, LangId::TypeScript);
+        let result = validate_single_return(source, &tree, &fn_node, "typescript");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), 2);
     }
@@ -1314,11 +1314,11 @@ class UserService:
     fn scope_conflicts_none() {
         // No overlap between call site scope and body vars
         let source = "function main() {\n  const x = 10;\n  const y = add(x, 5);\n}";
-        let tree = parse_source(source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
         let body_text = "const sum = a + b;";
         let call_byte = crate::edit::line_col_to_byte(source, 2, 0);
         let conflicts =
-            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, LangId::TypeScript);
+            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, "typescript");
         assert!(
             conflicts.is_empty(),
             "expected no conflicts, got: {:?}",
@@ -1330,11 +1330,11 @@ class UserService:
     fn scope_conflicts_detected() {
         // `temp` exists at call site and inside body
         let source = "function main() {\n  const temp = 99;\n  const result = compute(5);\n}";
-        let tree = parse_source(source, LangId::TypeScript);
+        let tree = parse_source(&source, "typescript");
         let body_text = "const temp = x * 2;\nconst result2 = temp + 10;";
         let call_byte = crate::edit::line_col_to_byte(source, 2, 0);
         let conflicts =
-            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, LangId::TypeScript);
+            detect_scope_conflicts(source, &tree, call_byte, &[], body_text, "typescript");
         assert!(!conflicts.is_empty(), "expected conflict for 'temp'");
         assert!(
             conflicts.iter().any(|c| c.name == "temp"),
@@ -1355,7 +1355,7 @@ class UserService:
         let mut map = std::collections::HashMap::new();
         map.insert("a".to_string(), "x".to_string());
         map.insert("b".to_string(), "y".to_string());
-        let result = substitute_params(body, &map, LangId::TypeScript);
+        let result = substitute_params(body, &map, "typescript");
         assert_eq!(result, "const sum = x + y;");
     }
 
@@ -1365,7 +1365,7 @@ class UserService:
         let body = "const result = items.filter(i => i > 0);";
         let mut map = std::collections::HashMap::new();
         map.insert("i".to_string(), "index".to_string());
-        let result = substitute_params(body, &map, LangId::TypeScript);
+        let result = substitute_params(body, &map, "typescript");
         // `items` should be untouched, but the arrow param `i` and its use `i` should be replaced
         assert!(
             !result.contains("items") || result.contains("items"),
@@ -1384,7 +1384,7 @@ class UserService:
         let body = "const sum = x + y;";
         let mut map = std::collections::HashMap::new();
         map.insert("x".to_string(), "x".to_string());
-        let result = substitute_params(body, &map, LangId::TypeScript);
+        let result = substitute_params(body, &map, "typescript");
         assert_eq!(result, "const sum = x + y;");
     }
 
@@ -1392,7 +1392,7 @@ class UserService:
     fn substitute_params_empty_map() {
         let body = "const sum = a + b;";
         let map = std::collections::HashMap::new();
-        let result = substitute_params(body, &map, LangId::TypeScript);
+        let result = substitute_params(body, &map, "typescript");
         assert_eq!(result, body);
     }
 }

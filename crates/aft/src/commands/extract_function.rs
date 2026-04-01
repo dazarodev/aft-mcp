@@ -131,15 +131,12 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
-    if !matches!(
-        lang,
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript | LangId::Python
-    ) {
+    if !matches!(lang, "typescript" | "tsx" | "javascript" | "python") {
         return Response::error(
             &req.id,
             "unsupported_language",
             format!(
-                "extract_function: only TypeScript/JavaScript/Python files are supported, got {:?}",
+                "extract_function: only TypeScript/JavaScript/Python files are supported, got {}",
                 lang
             ),
         );
@@ -198,7 +195,7 @@ pub fn handle_extract_function(req: &RawRequest, ctx: &AppContext) -> Response {
     // Check for this/self
     if free_vars.has_this_or_self {
         let keyword = match lang {
-            LangId::Python => "self",
+            "python" => "self",
             _ => "this",
         };
         return Response::error(
@@ -374,13 +371,13 @@ fn find_enclosing_function_node<'a>(
     lang: LangId,
 ) -> Option<tree_sitter::Node<'a>> {
     let fn_kinds: &[&str] = match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => &[
+        "typescript" | "tsx" | "javascript" => &[
             "function_declaration",
             "method_definition",
             "arrow_function",
             "lexical_declaration",
         ],
-        LangId::Python => &["function_definition"],
+        "python" => &["function_definition"],
         _ => &[],
     };
 

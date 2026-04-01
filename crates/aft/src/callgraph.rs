@@ -179,25 +179,25 @@ pub fn is_entry_point(name: &str, kind: &SymbolKind, exported: bool, lang: LangI
 
     // Test patterns by language
     match lang {
-        LangId::TypeScript | LangId::JavaScript | LangId::Tsx => {
+        "typescript" | "javascript" | "tsx" => {
             // describe, it, test (exact), or starts with test/spec
             matches!(lower.as_str(), "describe" | "it" | "test")
                 || lower.starts_with("test")
                 || lower.starts_with("spec")
         }
-        LangId::Python => {
+        "python" => {
             // starts with test_ or matches setUp/tearDown
             lower.starts_with("test_") || matches!(name, "setUp" | "tearDown")
         }
-        LangId::Rust => {
+        "rust" => {
             // starts with test_
             lower.starts_with("test_")
         }
-        LangId::Go => {
+        "go" => {
             // starts with Test (case-sensitive)
             name.starts_with("Test")
         }
-        LangId::Markdown => false,
+        _ => false,
     }
 }
 
@@ -362,7 +362,7 @@ pub fn extract_parameters(signature: &str, lang: LangId) -> Vec<String> {
 
         // Skip language-specific receivers
         match lang {
-            LangId::Rust => {
+            "rust" => {
                 let normalized = trimmed.replace(' ', "");
                 if normalized == "self"
                     || normalized == "&self"
@@ -372,7 +372,7 @@ pub fn extract_parameters(signature: &str, lang: LangId) -> Vec<String> {
                     continue;
                 }
             }
-            LangId::Python => {
+            "python" => {
                 if trimmed == "self" || trimmed.starts_with("self:") {
                     continue;
                 }
@@ -436,14 +436,14 @@ fn extract_param_name(param: &str, lang: LangId) -> String {
         &trimmed[3..]
     } else if trimmed.starts_with("**") {
         &trimmed[2..]
-    } else if trimmed.starts_with('*') && lang == LangId::Python {
+    } else if trimmed.starts_with('*') && lang == "python" {
         &trimmed[1..]
     } else {
         trimmed
     };
 
     // Rust: `mut name: Type` → strip `mut `
-    let working = if lang == LangId::Rust && working.starts_with("mut ") {
+    let working = if lang == "rust" && working.starts_with("mut ") {
         &working[4..]
     } else {
         working
@@ -461,10 +461,10 @@ fn extract_param_name(param: &str, lang: LangId) -> String {
     let name = name.trim_end_matches('?');
 
     // For Go, the name might be just `name Type` — take the first word
-    if lang == LangId::Go && !name.contains(' ') {
+    if lang == "go" && !name.contains(' ') {
         return name.to_string();
     }
-    if lang == LangId::Go {
+    if lang == "go" {
         return name.split_whitespace().next().unwrap_or("").to_string();
     }
 
@@ -512,12 +512,16 @@ impl CallGraph {
         short_name: &str,
         caller_file: &Path,
         import_block: &ImportBlock,
+        project_root: Option<&Path>,
         mut file_exports_symbol: F,
     ) -> EdgeResolution
     where
         F: FnMut(&Path, &str) -> bool,
     {
         let caller_dir = caller_file.parent().unwrap_or(Path::new("."));
+        let resolve = |dir: &Path, path: &str| {
+            resolve_module_path_with_root(dir, path, project_root)
+        };
 
         // Check namespace imports: "utils.foo" where utils is a namespace import
         if full_callee.contains('.') {
@@ -528,9 +532,7 @@ impl CallGraph {
 
                 for imp in &import_block.imports {
                     if imp.namespace_import.as_deref() == Some(namespace) {
-                        if let Some(resolved_path) =
-                            resolve_module_path(caller_dir, &imp.module_path)
-                        {
+                        if let Some(resolved_path) = resolve(caller_dir, &imp.module_path) {
                             return EdgeResolution::Resolved {
                                 file: resolved_path,
                                 symbol: member.to_owned(),
@@ -545,7 +547,7 @@ impl CallGraph {
         for imp in &import_block.imports {
             // Direct named import: import { foo } from './utils'
             if imp.names.iter().any(|name| name == short_name) {
-                if let Some(resolved_path) = resolve_module_path(caller_dir, &imp.module_path) {
+                if let Some(resolved_path) = resolve(caller_dir, &imp.module_path) {
                     // The name in the import is the original name from the source module
                     return EdgeResolution::Resolved {
                         file: resolved_path,
@@ -556,7 +558,7 @@ impl CallGraph {
 
             // Default import: import foo from './utils'
             if imp.default_import.as_deref() == Some(short_name) {
-                if let Some(resolved_path) = resolve_module_path(caller_dir, &imp.module_path) {
+                if let Some(resolved_path) = resolve(caller_dir, &imp.module_path) {
                     return EdgeResolution::Resolved {
                         file: resolved_path,
                         symbol: "default".to_owned(),
@@ -581,7 +583,7 @@ impl CallGraph {
         // Try barrel file re-exports: if any import points to an index file,
         // check if that file re-exports the symbol
         for imp in &import_block.imports {
-            if let Some(resolved_path) = resolve_module_path(caller_dir, &imp.module_path) {
+            if let Some(resolved_path) = resolve(caller_dir, &imp.module_path) {
                 // Check if the resolved path is a directory (barrel file)
                 if resolved_path.is_dir() {
                     if let Some(index_path) = find_index_file(&resolved_path) {
@@ -630,11 +632,13 @@ impl CallGraph {
         caller_file: &Path,
         import_block: &ImportBlock,
     ) -> EdgeResolution {
+        let root = self.project_root.clone();
         Self::resolve_cross_file_edge_with_exports(
             full_callee,
             short_name,
             caller_file,
             import_block,
+            Some(root.as_path()),
             |path, symbol_name| self.file_exports_symbol(path, symbol_name),
         )
     }
@@ -824,6 +828,7 @@ impl CallGraph {
                         &call_site.callee_name,
                         canon_caller.as_ref(),
                         &file_data.import_block,
+                        Some(self.project_root.as_path()),
                         |path, symbol_name| self.file_exports_symbol_cached(path, symbol_name),
                     );
 
@@ -2216,9 +2221,25 @@ fn extract_callee_names(node: tree_sitter::Node, source: &str) -> (Option<String
 ///
 /// Tries common file extensions for TypeScript/JavaScript projects.
 pub(crate) fn resolve_module_path(from_dir: &Path, module_path: &str) -> Option<PathBuf> {
-    // Only handle relative imports
+    resolve_module_path_with_root(from_dir, module_path, None)
+}
+
+/// Resolve a module path with optional project root for alias support.
+///
+/// Handles:
+/// - Relative imports (`./foo`, `../bar`)
+/// - TypeScript path aliases (`@/lib/utils` → `{src_root}/lib/utils`)
+///
+/// Alias resolution: walks up from `from_dir` looking for `tsconfig.json`
+/// with `compilerOptions.paths`, or falls back to `@/ → src/` convention.
+pub(crate) fn resolve_module_path_with_root(
+    from_dir: &Path,
+    module_path: &str,
+    project_root: Option<&Path>,
+) -> Option<PathBuf> {
+    // Handle path aliases (e.g. @/lib/utils)
     if !module_path.starts_with('.') {
-        return None;
+        return resolve_alias_path(from_dir, module_path, project_root);
     }
 
     let base = from_dir.join(module_path);
@@ -2257,6 +2278,137 @@ fn find_index_file(dir: &Path) -> Option<PathBuf> {
         }
     }
     None
+}
+
+/// Resolve a TypeScript path alias like `@/lib/utils` to a filesystem path.
+///
+/// Strategy:
+/// 1. Walk up from `from_dir` looking for `tsconfig.json` with `compilerOptions.paths`
+/// 2. If found, map the alias prefix to the configured base directory
+/// 3. Fallback: `@/` → `src/` relative to the nearest dir containing tsconfig.json
+///
+/// Caches nothing — called per-edge during reverse index build.
+fn resolve_alias_path(
+    from_dir: &Path,
+    module_path: &str,
+    project_root: Option<&Path>,
+) -> Option<PathBuf> {
+    // Extract alias prefix (e.g. "@" from "@/lib/utils")
+    let (prefix, rest) = if let Some(stripped) = module_path.strip_prefix("@/") {
+        ("@/*", stripped)
+    } else if let Some(stripped) = module_path.strip_prefix("~/") {
+        ("~/*", stripped)
+    } else {
+        return None;
+    };
+
+    // Try to find tsconfig.json and read paths
+    if let Some((base_dir, paths)) = find_tsconfig_paths(from_dir, project_root) {
+        if let Some(mappings) = paths.get(prefix) {
+            for mapping in mappings {
+                // mapping is like "./src/*" — strip the trailing /*
+                let mapping_base = mapping.trim_end_matches('*').trim_end_matches('/');
+                let resolved_dir = base_dir.join(mapping_base);
+                let candidate = resolved_dir.join(rest);
+                if let Some(found) = try_resolve_file(&candidate) {
+                    return Some(found);
+                }
+            }
+        }
+    }
+
+    // Fallback: @/ → src/ relative to project root or tsconfig location
+    let root = project_root.or_else(|| find_project_root(from_dir));
+    if let Some(root) = root {
+        let candidate = root.join("src").join(rest);
+        if let Some(found) = try_resolve_file(&candidate) {
+            return Some(found);
+        }
+        // Also try apps/web/src/ for monorepos
+        let candidate = root.join("apps/web/src").join(rest);
+        if let Some(found) = try_resolve_file(&candidate) {
+            return Some(found);
+        }
+    }
+
+    None
+}
+
+/// Try to resolve a path with common extensions and index files.
+fn try_resolve_file(base: &Path) -> Option<PathBuf> {
+    if base.is_file() {
+        return Some(std::fs::canonicalize(base).unwrap_or_else(|_| base.to_path_buf()));
+    }
+    let extensions = [".ts", ".tsx", ".js", ".jsx"];
+    for ext in &extensions {
+        let with_ext = base.with_extension(ext.trim_start_matches('.'));
+        if with_ext.is_file() {
+            return Some(std::fs::canonicalize(&with_ext).unwrap_or(with_ext));
+        }
+    }
+    if base.is_dir() {
+        return find_index_file(base);
+    }
+    None
+}
+
+/// Find tsconfig.json and extract `compilerOptions.paths` + `baseUrl`.
+///
+/// Walks up from `start_dir` to `project_root` (or filesystem root).
+/// Returns (base_dir for path resolution, paths map).
+fn find_tsconfig_paths(
+    start_dir: &Path,
+    project_root: Option<&Path>,
+) -> Option<(PathBuf, HashMap<String, Vec<String>>)> {
+    let stop_at = project_root.unwrap_or(Path::new("/"));
+    let mut dir = start_dir;
+    loop {
+        let tsconfig = dir.join("tsconfig.json");
+        if tsconfig.is_file() {
+            if let Ok(contents) = std::fs::read_to_string(&tsconfig) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&contents) {
+                    let compiler_opts = json.get("compilerOptions")?;
+                    let paths_val = compiler_opts.get("paths")?;
+                    let paths_map = paths_val.as_object()?;
+
+                    // Determine base directory: baseUrl relative to tsconfig location
+                    let base_url = compiler_opts
+                        .get("baseUrl")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(".");
+                    let base_dir = dir.join(base_url);
+
+                    let mut result: HashMap<String, Vec<String>> = HashMap::new();
+                    for (key, val) in paths_map {
+                        if let Some(arr) = val.as_array() {
+                            let mappings: Vec<String> = arr
+                                .iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect();
+                            result.insert(key.clone(), mappings);
+                        }
+                    }
+                    return Some((base_dir, result));
+                }
+            }
+        }
+        if dir == stop_at || dir.parent().is_none() {
+            break;
+        }
+        dir = dir.parent()?;
+    }
+    None
+}
+
+/// Walk up to find project root (directory containing package.json or .git).
+fn find_project_root(from: &Path) -> Option<&Path> {
+    let mut dir = from;
+    loop {
+        if dir.join("package.json").is_file() || dir.join(".git").exists() {
+            return Some(dir);
+        }
+        dir = dir.parent()?;
+    }
 }
 
 /// Resolve an aliased import: `import { foo as bar } from './utils'`
@@ -2955,7 +3107,7 @@ export function funcB() {
             "handleRequest",
             &SymbolKind::Function,
             true,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -2966,7 +3118,7 @@ export function funcB() {
             "handleRequest",
             &SymbolKind::Method,
             true,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -2974,7 +3126,7 @@ export function funcB() {
     fn is_entry_point_main_init_patterns() {
         for name in &["main", "Main", "MAIN", "init", "setup", "bootstrap", "run"] {
             assert!(
-                is_entry_point(name, &SymbolKind::Function, false, LangId::TypeScript),
+                is_entry_point(name, &SymbolKind::Function, false, "typescript"),
                 "{} should be an entry point",
                 name
             );
@@ -2987,31 +3139,31 @@ export function funcB() {
             "describe",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "it",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "test",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "testValidation",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "specHelper",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -3021,26 +3173,26 @@ export function funcB() {
             "test_login",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
         assert!(is_entry_point(
             "setUp",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
         assert!(is_entry_point(
             "tearDown",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
         // "testSomething" should NOT match Python (needs test_ prefix)
         assert!(!is_entry_point(
             "testSomething",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
     }
 
@@ -3050,13 +3202,13 @@ export function funcB() {
             "test_parse",
             &SymbolKind::Function,
             false,
-            LangId::Rust
+            "rust"
         ));
         assert!(!is_entry_point(
             "TestSomething",
             &SymbolKind::Function,
             false,
-            LangId::Rust
+            "rust"
         ));
     }
 
@@ -3066,14 +3218,14 @@ export function funcB() {
             "TestParsing",
             &SymbolKind::Function,
             false,
-            LangId::Go
+            "go"
         ));
         // lowercase test should NOT match Go (needs uppercase Test prefix)
         assert!(!is_entry_point(
             "testParsing",
             &SymbolKind::Function,
             false,
-            LangId::Go
+            "go"
         ));
     }
 
@@ -3083,7 +3235,7 @@ export function funcB() {
             "helperUtil",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -3330,7 +3482,7 @@ function testValidation() {
     fn extract_parameters_typescript() {
         let params = extract_parameters(
             "function processData(input: string, count: number): void",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["input", "count"]);
     }
@@ -3339,7 +3491,7 @@ function testValidation() {
     fn extract_parameters_typescript_optional() {
         let params = extract_parameters(
             "function fetch(url: string, options?: RequestInit): Promise<Response>",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["url", "options"]);
     }
@@ -3348,7 +3500,7 @@ function testValidation() {
     fn extract_parameters_typescript_defaults() {
         let params = extract_parameters(
             "function greet(name: string, greeting: string = \"hello\"): string",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["name", "greeting"]);
     }
@@ -3357,7 +3509,7 @@ function testValidation() {
     fn extract_parameters_typescript_rest() {
         let params = extract_parameters(
             "function sum(...numbers: number[]): number",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["numbers"]);
     }
@@ -3366,20 +3518,20 @@ function testValidation() {
     fn extract_parameters_python_self_skipped() {
         let params = extract_parameters(
             "def process(self, data: str, count: int) -> bool",
-            LangId::Python,
+            "python",
         );
         assert_eq!(params, vec!["data", "count"]);
     }
 
     #[test]
     fn extract_parameters_python_no_self() {
-        let params = extract_parameters("def validate(input: str) -> bool", LangId::Python);
+        let params = extract_parameters("def validate(input: str) -> bool", "python");
         assert_eq!(params, vec!["input"]);
     }
 
     #[test]
     fn extract_parameters_python_star_args() {
-        let params = extract_parameters("def func(*args, **kwargs)", LangId::Python);
+        let params = extract_parameters("def func(*args, **kwargs)", "python");
         assert_eq!(params, vec!["args", "kwargs"]);
     }
 
@@ -3387,26 +3539,26 @@ function testValidation() {
     fn extract_parameters_rust_self_skipped() {
         let params = extract_parameters(
             "fn process(&self, data: &str, count: usize) -> bool",
-            LangId::Rust,
+            "rust",
         );
         assert_eq!(params, vec!["data", "count"]);
     }
 
     #[test]
     fn extract_parameters_rust_mut_self_skipped() {
-        let params = extract_parameters("fn update(&mut self, value: i32)", LangId::Rust);
+        let params = extract_parameters("fn update(&mut self, value: i32)", "rust");
         assert_eq!(params, vec!["value"]);
     }
 
     #[test]
     fn extract_parameters_rust_no_self() {
-        let params = extract_parameters("fn validate(input: &str) -> bool", LangId::Rust);
+        let params = extract_parameters("fn validate(input: &str) -> bool", "rust");
         assert_eq!(params, vec!["input"]);
     }
 
     #[test]
     fn extract_parameters_rust_mut_param() {
-        let params = extract_parameters("fn process(mut buf: Vec<u8>, len: usize)", LangId::Rust);
+        let params = extract_parameters("fn process(mut buf: Vec<u8>, len: usize)", "rust");
         assert_eq!(params, vec!["buf", "len"]);
     }
 
@@ -3414,14 +3566,14 @@ function testValidation() {
     fn extract_parameters_go() {
         let params = extract_parameters(
             "func ProcessData(input string, count int) error",
-            LangId::Go,
+            "go",
         );
         assert_eq!(params, vec!["input", "count"]);
     }
 
     #[test]
     fn extract_parameters_empty() {
-        let params = extract_parameters("function noArgs(): void", LangId::TypeScript);
+        let params = extract_parameters("function noArgs(): void", "typescript");
         assert!(
             params.is_empty(),
             "no-arg function should return empty params"
@@ -3430,13 +3582,13 @@ function testValidation() {
 
     #[test]
     fn extract_parameters_no_parens() {
-        let params = extract_parameters("const x = 42", LangId::TypeScript);
+        let params = extract_parameters("const x = 42", "typescript");
         assert!(params.is_empty(), "no parens should return empty params");
     }
 
     #[test]
     fn extract_parameters_javascript() {
-        let params = extract_parameters("function handleClick(event, target)", LangId::JavaScript);
+        let params = extract_parameters("function handleClick(event, target)", "javascript");
         assert_eq!(params, vec!["event", "target"]);
     }
 }

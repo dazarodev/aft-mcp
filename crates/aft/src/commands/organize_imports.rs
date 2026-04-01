@@ -222,7 +222,7 @@ fn organize(
     let mut total_removed = 0;
 
     for (group, imps) in &groups {
-        let (organized, removed) = if matches!(lang, LangId::Rust) {
+        let (organized, removed) = if matches!(lang, "rust") {
             organize_rust_group(imps)
         } else {
             organize_generic_group(imps, lang)
@@ -482,7 +482,7 @@ fn generate_organized_block(
 /// Generate a single import line from an OrganizedImport.
 fn generate_organized_line(imp: &OrganizedImport, lang: LangId) -> String {
     match lang {
-        LangId::Rust => {
+        "rust" => {
             let prefix = if imp.default_import.as_deref() == Some("pub") {
                 "pub "
             } else {
@@ -490,7 +490,7 @@ fn generate_organized_line(imp: &OrganizedImport, lang: LangId) -> String {
             };
             format!("{}use {};", prefix, imp.module_path)
         }
-        LangId::Go => {
+        "go" => {
             // Go organize: regenerate as standalone imports
             // (organize_imports for Go would need grouped import rewrite — keep simple for now)
             if let Some(ref alias) = imp.default_import {

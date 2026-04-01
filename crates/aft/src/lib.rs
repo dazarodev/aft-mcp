@@ -14,6 +14,7 @@
 // production error paths as of v0.6.3 audit.
 
 pub mod ast_grep_lang;
+pub mod lang;
 pub mod backup;
 pub mod callgraph;
 pub mod calls;

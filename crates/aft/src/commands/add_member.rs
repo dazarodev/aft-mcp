@@ -275,7 +275,7 @@ fn find_scope_container(
     let mut available: Vec<String> = Vec::new();
 
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             // Walk for class_declaration matching name
             let mut cursor = root.walk();
             if cursor.goto_first_child() {
@@ -342,7 +342,7 @@ fn find_scope_container(
                 }
             }
         }
-        LangId::Python => {
+        "python" => {
             // Walk for class_definition matching identifier
             fn walk_py_classes<'a>(
                 node: &Node<'a>,
@@ -388,7 +388,7 @@ fn find_scope_container(
                 return (Some(info), available);
             }
         }
-        LangId::Rust => {
+        "rust" => {
             // Walk for impl_item first (more common target for add_member),
             // then struct_item. This means `impl Config` is found before `struct Config`.
             let mut struct_match: Option<BodyInfo> = None;
@@ -439,7 +439,7 @@ fn find_scope_container(
                 return (Some(info), available);
             }
         }
-        LangId::Go => {
+        "go" => {
             // Walk for type_declaration → type_spec → struct_type
             let mut cursor = root.walk();
             if cursor.goto_first_child() {
@@ -458,7 +458,7 @@ fn find_scope_container(
                 }
             }
         }
-        LangId::Markdown => {}
+        _ => {}
     }
 
     (None, available)
@@ -830,7 +830,7 @@ fn resolve_position(
 /// Resolve "first" position: right after the opening delimiter.
 fn resolve_first(source: &str, body_start: usize, lang: LangId) -> usize {
     match lang {
-        LangId::Python => {
+        "python" => {
             // Python: body starts right after the colon + newline
             // body_start is the start of the block node, which is the first
             // content line. We insert at body_start.
@@ -856,7 +856,7 @@ fn resolve_first(source: &str, body_start: usize, lang: LangId) -> usize {
 /// Resolve "last" position: before the closing delimiter.
 fn resolve_last(source: &str, body_end: usize, children: &[BodyChild], lang: LangId) -> usize {
     match lang {
-        LangId::Python => {
+        "python" => {
             // Python: insert after the last child's line
             if let Some(last) = children.last() {
                 // Find end of the last child's line
@@ -909,7 +909,7 @@ fn indent_code(
 
     // For empty brace-delimited containers at "last" position,
     // we're inserting at the line of `}` — no special leading newline needed.
-    let _needs_trailing_newline = is_empty && !matches!(lang, LangId::Python);
+    let _needs_trailing_newline = is_empty && lang != "python";
 
     for line in &lines {
         if line.trim().is_empty() {
