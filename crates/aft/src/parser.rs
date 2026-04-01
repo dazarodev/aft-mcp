@@ -152,6 +152,9 @@ pub enum LangId {
     Rust,
     Go,
     Markdown,
+    Css,
+    Html,
+    Apex,
 }
 
 /// Maps file extension to language identifier.
@@ -165,6 +168,9 @@ pub fn detect_language(path: &Path) -> Option<LangId> {
         "rs" => Some(LangId::Rust),
         "go" => Some(LangId::Go),
         "md" | "markdown" | "mdx" => Some(LangId::Markdown),
+        "css" | "scss" => Some(LangId::Css),
+        "html" | "htm" => Some(LangId::Html),
+        "cls" | "trigger" | "apex" => Some(LangId::Apex),
         _ => None,
     }
 }
@@ -179,6 +185,9 @@ pub fn grammar_for(lang: LangId) -> Language {
         LangId::Rust => tree_sitter_rust::LANGUAGE.into(),
         LangId::Go => tree_sitter_go::LANGUAGE.into(),
         LangId::Markdown => tree_sitter_md::LANGUAGE.into(),
+        LangId::Css => tree_sitter_css::LANGUAGE.into(),
+        LangId::Html => tree_sitter_html::LANGUAGE.into(),
+        LangId::Apex => tree_sitter_sfapex::apex::LANGUAGE.into(),
     }
 }
 
@@ -190,7 +199,7 @@ fn query_for(lang: LangId) -> Option<&'static str> {
         LangId::Python => Some(PY_QUERY),
         LangId::Rust => Some(RS_QUERY),
         LangId::Go => Some(GO_QUERY),
-        LangId::Markdown => None,
+        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => None,
     }
 }
 
@@ -294,7 +303,7 @@ impl FileParser {
         let root = tree.root_node();
 
         // Markdown uses direct tree walking, not query patterns
-        if lang == LangId::Markdown {
+        if matches!(lang, LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex) {
             return extract_md_symbols(&source, &root);
         }
 
@@ -316,7 +325,7 @@ impl FileParser {
             LangId::Python => extract_py_symbols(&source, &root, &query),
             LangId::Rust => extract_rs_symbols(&source, &root, &query),
             LangId::Go => extract_go_symbols(&source, &root, &query),
-            LangId::Markdown => Ok(vec![]), // handled by extract_md_symbols
+            LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => Ok(vec![]), // handled above
         }
     }
 }
@@ -370,7 +379,7 @@ pub(crate) fn node_range_with_decorators(node: &Node, source: &str, lang: LangId
                 // Decorators are handled by decorated_definition capture
                 false
             }
-            LangId::Markdown => false,
+            LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => false,
         };
 
         if should_include {

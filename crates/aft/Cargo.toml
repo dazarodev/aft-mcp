@@ -1,25 +1,16 @@
 [package]
-name = "agent-file-tools"
-version = "0.7.3"
+name = "aft-mcp"
+version = "0.1.0"
 edition = "2021"
-description = "Agent File Tools — tree-sitter powered code analysis for AI agents"
-license = "MIT"
-repository = "https://github.com/cortexkit/aft"
-keywords = ["tree-sitter", "code-analysis", "ai-agent", "ast"]
-categories = ["command-line-utilities", "development-tools"]
-readme = "../../README.md"
+description = "MCP code intelligence server — aft engine with MCP JSON-RPC 2.0 wrapper"
 
 [lib]
 name = "aft"
 path = "src/lib.rs"
 
 [[bin]]
-name = "aft"
+name = "aft-mcp"
 path = "src/main.rs"
-
-[[bin]]
-name = "fake-lsp-server"
-path = "tests/lsp/fake_server.rs"
 
 [dependencies]
 log = "0.4"
@@ -35,16 +26,22 @@ tree-sitter-python = "0.25"
 tree-sitter-rust = "0.24"
 tree-sitter-go = "0.25"
 tree-sitter-md = "0.5"
+tree-sitter-css = "0.25"
+tree-sitter-html = "0.23.2"
+tree-sitter-sfapex = "2.4.0"
 similar = "2"
 ast-grep-core = "0.41"
 streaming-iterator = "0.1"
 ignore = "0.4"
 notify = "8"
-
 glob = "0.3"
 which = "7"
 url = "2"
 content_inspector = "0.2.4"
 
-[dev-dependencies]
-tempfile = "3"
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

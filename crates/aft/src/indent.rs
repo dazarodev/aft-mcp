@@ -37,7 +37,7 @@ impl IndentStyle {
             LangId::TypeScript | LangId::Tsx | LangId::JavaScript => IndentStyle::Spaces(2),
             LangId::Rust => IndentStyle::Spaces(4),
             LangId::Go => IndentStyle::Tabs,
-            LangId::Markdown => IndentStyle::Spaces(4),
+            LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => IndentStyle::Spaces(4),
         }
     }
 }

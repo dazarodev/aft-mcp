@@ -458,7 +458,7 @@ fn find_scope_container(
                 }
             }
         }
-        LangId::Markdown => {}
+        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => {}
     }
 
     (None, available)

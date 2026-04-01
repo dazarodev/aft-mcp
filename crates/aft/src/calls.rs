@@ -14,7 +14,7 @@ pub fn call_node_kinds(lang: LangId) -> Vec<&'static str> {
         }
         LangId::Python => vec!["call"],
         LangId::Rust => vec!["call_expression", "macro_invocation"],
-        LangId::Markdown => vec![],
+        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => vec![],
     }
 }
 
