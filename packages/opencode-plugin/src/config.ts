@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type ParseError, parse, printParseErrorCode } from "jsonc-parser";
+import { type ParseError, parse } from "jsonc-parser";
 import { z } from "zod";
 import { error, log, warn } from "./logger.js";
 
@@ -84,7 +84,7 @@ function parseJsonc<T = unknown>(content: string): T {
 
   if (errors.length > 0) {
     const errorMessages = errors
-      .map((e) => `${printParseErrorCode(e.error)} at offset ${e.offset}`)
+      .map((e) => `error code ${e.error} at offset ${e.offset}`)
       .join(", ");
     throw new SyntaxError(`JSONC parse error: ${errorMessages}`);
   }
