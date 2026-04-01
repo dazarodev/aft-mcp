@@ -1,0 +1,19 @@
+{
+  "name": "aft-mcp",
+  "description": "Code intelligence MCP server: outline, zoom, callers, call_tree, impact, trace_to, trace_data, ast_search. 16 languages via pluggable tree-sitter registry.",
+  "version": "0.1.0",
+  "author": {
+    "name": "dazarodev"
+  },
+  "repository": "https://github.com/dazarodev/aft-mcp",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "code-intelligence",
+    "tree-sitter",
+    "outline",
+    "callers",
+    "call-graph",
+    "ast-search"
+  ]
+}
