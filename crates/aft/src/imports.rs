@@ -114,11 +114,11 @@ fn import_byte_range(imports: &[ImportStatement]) -> Option<Range<usize>> {
 /// Parse imports from source using the provided tree-sitter tree.
 pub fn parse_imports(source: &str, tree: &Tree, lang: LangId) -> ImportBlock {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => parse_ts_imports(source, tree),
-        LangId::Python => parse_py_imports(source, tree),
-        LangId::Rust => parse_rs_imports(source, tree),
-        LangId::Go => parse_go_imports(source, tree),
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => ImportBlock::empty(),
+        "typescript" | "tsx" | "javascript" => parse_ts_imports(source, tree),
+        "python" => parse_py_imports(source, tree),
+        "rust" => parse_rs_imports(source, tree),
+        "go" => parse_go_imports(source, tree),
+        _ => ImportBlock::empty(),
     }
 }
 
@@ -284,13 +284,13 @@ pub fn generate_import_line(
     type_only: bool,
 ) -> String {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             generate_ts_import_line(module_path, names, default_import, type_only)
         }
-        LangId::Python => generate_py_import_line(module_path, names, default_import),
-        LangId::Rust => generate_rs_import_line(module_path, names, type_only),
-        LangId::Go => generate_go_import_line(module_path, default_import, false),
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => String::new(),
+        "python" => generate_py_import_line(module_path, names, default_import),
+        "rust" => generate_rs_import_line(module_path, names, type_only),
+        "go" => generate_go_import_line(module_path, default_import, false),
+        _ => String::new(),
     }
 }
 
@@ -298,12 +298,12 @@ pub fn generate_import_line(
 pub fn is_supported(lang: LangId) -> bool {
     matches!(
         lang,
-        LangId::TypeScript
-            | LangId::Tsx
-            | LangId::JavaScript
-            | LangId::Python
-            | LangId::Rust
-            | LangId::Go
+        "typescript"
+            | "tsx"
+            | "javascript"
+            | "python"
+            | "rust"
+            | "go"
     )
 }
 
@@ -319,11 +319,11 @@ pub fn classify_group_ts(module_path: &str) -> ImportGroup {
 /// Classify a module path into a group for the given language.
 pub fn classify_group(lang: LangId, module_path: &str) -> ImportGroup {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => classify_group_ts(module_path),
-        LangId::Python => classify_group_py(module_path),
-        LangId::Rust => classify_group_rs(module_path),
-        LangId::Go => classify_group_go(module_path),
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => ImportGroup::External,
+        "typescript" | "tsx" | "javascript" => classify_group_ts(module_path),
+        "python" => classify_group_py(module_path),
+        "rust" => classify_group_rs(module_path),
+        "go" => classify_group_go(module_path),
+        _ => ImportGroup::External,
     }
 }
 
@@ -1386,20 +1386,20 @@ mod tests {
     use super::*;
 
     fn parse_ts(source: &str) -> (Tree, ImportBlock) {
-        let grammar = grammar_for(LangId::TypeScript);
+        let grammar = grammar_for("typescript");
         let mut parser = Parser::new();
         parser.set_language(&grammar).unwrap();
         let tree = parser.parse(source, None).unwrap();
-        let block = parse_imports(source, &tree, LangId::TypeScript);
+        let block = parse_imports(source, &tree, "typescript");
         (tree, block)
     }
 
     fn parse_js(source: &str) -> (Tree, ImportBlock) {
-        let grammar = grammar_for(LangId::JavaScript);
+        let grammar = grammar_for("javascript");
         let mut parser = Parser::new();
         parser.set_language(&grammar).unwrap();
         let tree = parser.parse(source, None).unwrap();
-        let block = parse_imports(source, &tree, LangId::JavaScript);
+        let block = parse_imports(source, &tree, "javascript");
         (tree, block)
     }
 
@@ -1566,7 +1566,7 @@ import { Config } from '../config';
     #[test]
     fn generate_named_import() {
         let line = generate_import_line(
-            LangId::TypeScript,
+            "typescript",
             "react",
             &["useState".to_string(), "useEffect".to_string()],
             None,
@@ -1577,27 +1577,27 @@ import { Config } from '../config';
 
     #[test]
     fn generate_default_import() {
-        let line = generate_import_line(LangId::TypeScript, "react", &[], Some("React"), false);
+        let line = generate_import_line("typescript", "react", &[], Some("React"), false);
         assert_eq!(line, "import React from 'react';");
     }
 
     #[test]
     fn generate_type_import() {
         let line =
-            generate_import_line(LangId::TypeScript, "react", &["FC".to_string()], None, true);
+            generate_import_line("typescript", "react", &["FC".to_string()], None, true);
         assert_eq!(line, "import type { FC } from 'react';");
     }
 
     #[test]
     fn generate_side_effect_import() {
-        let line = generate_import_line(LangId::TypeScript, "./styles.css", &[], None, false);
+        let line = generate_import_line("typescript", "./styles.css", &[], None, false);
         assert_eq!(line, "import './styles.css';");
     }
 
     #[test]
     fn generate_default_and_named() {
         let line = generate_import_line(
-            LangId::TypeScript,
+            "typescript",
             "react",
             &["useState".to_string()],
             Some("React"),
@@ -1645,11 +1645,11 @@ import { c } from 'charlie';
     // --- Python parsing ---
 
     fn parse_py(source: &str) -> (Tree, ImportBlock) {
-        let grammar = grammar_for(LangId::Python);
+        let grammar = grammar_for(python);
         let mut parser = Parser::new();
         parser.set_language(&grammar).unwrap();
         let tree = parser.parse(source, None).unwrap();
-        let block = parse_imports(source, &tree, LangId::Python);
+        let block = parse_imports(source, &tree, python);
         (tree, block)
     }
 
@@ -1728,14 +1728,14 @@ import { c } from 'charlie';
 
     #[test]
     fn generate_py_import() {
-        let line = generate_import_line(LangId::Python, "os", &[], None, false);
+        let line = generate_import_line("python", "os", &[], None, false);
         assert_eq!(line, "import os");
     }
 
     #[test]
     fn generate_py_from_import() {
         let line = generate_import_line(
-            LangId::Python,
+            "python",
             "collections",
             &["OrderedDict".to_string()],
             None,
@@ -1747,7 +1747,7 @@ import { c } from 'charlie';
     #[test]
     fn generate_py_from_import_multiple() {
         let line = generate_import_line(
-            LangId::Python,
+            "python",
             "typing",
             &["Optional".to_string(), "List".to_string()],
             None,
@@ -1759,11 +1759,11 @@ import { c } from 'charlie';
     // --- Rust parsing ---
 
     fn parse_rust(source: &str) -> (Tree, ImportBlock) {
-        let grammar = grammar_for(LangId::Rust);
+        let grammar = grammar_for("rust");
         let mut parser = Parser::new();
         parser.set_language(&grammar).unwrap();
         let tree = parser.parse(source, None).unwrap();
-        let block = parse_imports(source, &tree, LangId::Rust);
+        let block = parse_imports(source, &tree, "rust");
         (tree, block)
     }
 
@@ -1825,18 +1825,18 @@ import { c } from 'charlie';
 
     #[test]
     fn generate_rs_use() {
-        let line = generate_import_line(LangId::Rust, "std::fmt::Display", &[], None, false);
+        let line = generate_import_line("rust", "std::fmt::Display", &[], None, false);
         assert_eq!(line, "use std::fmt::Display;");
     }
 
     // --- Go parsing ---
 
     fn parse_go(source: &str) -> (Tree, ImportBlock) {
-        let grammar = grammar_for(LangId::Go);
+        let grammar = grammar_for("go");
         let mut parser = Parser::new();
         parser.set_language(&grammar).unwrap();
         let tree = parser.parse(source, None).unwrap();
-        let block = parse_imports(source, &tree, LangId::Go);
+        let block = parse_imports(source, &tree, "go");
         (tree, block)
     }
 

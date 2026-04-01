@@ -24,15 +24,15 @@ pub enum AstGrepLang {
 }
 
 impl AstGrepLang {
-    /// Convert from the crate's `LangId` enum.
-    pub fn from_lang_id(lang_id: &LangId) -> Option<Self> {
+    /// Convert from the crate's `LangId` string.
+    pub fn from_lang_id(lang_id: LangId) -> Option<Self> {
         match lang_id {
-            LangId::TypeScript => Some(Self::TypeScript),
-            LangId::Tsx => Some(Self::Tsx),
-            LangId::JavaScript => Some(Self::JavaScript),
-            LangId::Python => Some(Self::Python),
-            LangId::Rust => Some(Self::Rust),
-            LangId::Go => Some(Self::Go),
+            "typescript" => Some(Self::TypeScript),
+            "tsx" => Some(Self::Tsx),
+            "javascript" => Some(Self::JavaScript),
+            "python" => Some(Self::Python),
+            "rust" => Some(Self::Rust),
+            "go" => Some(Self::Go),
             // Markdown, CSS, HTML etc. don't have meaningful AST patterns
             _ => None,
         }

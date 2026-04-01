@@ -101,15 +101,12 @@ pub fn handle_inline_symbol(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
-    if !matches!(
-        lang,
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript | LangId::Python
-    ) {
+    if !matches!(lang, "typescript" | "tsx" | "javascript" | "python") {
         return Response::error(
             &req.id,
             "unsupported_language",
             format!(
-                "inline_symbol: only TypeScript/JavaScript/Python files are supported, got {:?}",
+                "inline_symbol: only TypeScript/JavaScript/Python files are supported, got {}",
                 lang
             ),
         );
@@ -408,12 +405,12 @@ fn find_function_node_at<'a>(
     lang: LangId,
 ) -> Option<tree_sitter::Node<'a>> {
     let fn_kinds: &[&str] = match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => &[
+        "typescript" | "tsx" | "javascript" => &[
             "function_declaration",
             "method_definition",
             "arrow_function",
         ],
-        LangId::Python => &["function_definition"],
+        "python" => &["function_definition"],
         _ => &[],
     };
 
@@ -483,7 +480,7 @@ fn extract_fn_params_and_body(
         for i in 0..child_count {
             if let Some(child) = params.child(i as u32) {
                 match lang {
-                    LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+                    "typescript" | "tsx" | "javascript" => {
                         if child.kind() == "required_parameter"
                             || child.kind() == "optional_parameter"
                         {
@@ -496,7 +493,7 @@ fn extract_fn_params_and_body(
                             param_names.push(node_text(source, &child).to_string());
                         }
                     }
-                    LangId::Python => {
+                    "python" => {
                         if child.kind() == "identifier" {
                             let name = node_text(source, &child).to_string();
                             if name != "self" {
@@ -514,7 +511,7 @@ fn extract_fn_params_and_body(
     let body_text = if let Some(body) = fn_node.child_by_field_name("body") {
         let raw = node_text(source, &body);
         match lang {
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 // For statement_block, strip outer { }
                 if body.kind() == "statement_block" {
                     strip_braces(raw)
@@ -523,7 +520,7 @@ fn extract_fn_params_and_body(
                     raw.to_string()
                 }
             }
-            LangId::Python => {
+            "python" => {
                 // Python function body — the "body" field contains the block
                 raw.to_string()
             }
@@ -579,8 +576,8 @@ fn find_call_node_at_line<'a>(
     lang: LangId,
 ) -> Option<tree_sitter::Node<'a>> {
     let call_kinds: Vec<&str> = match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => vec!["call_expression"],
-        LangId::Python => vec!["call"],
+        "typescript" | "tsx" | "javascript" => vec!["call_expression"],
+        "python" => vec!["call"],
         _ => vec![],
     };
 
@@ -690,10 +687,10 @@ fn extract_call_arguments(
     let mut args = Vec::new();
 
     let args_node = match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             call_node.child_by_field_name("arguments")
         }
-        LangId::Python => call_node.child_by_field_name("arguments"),
+        "python" => call_node.child_by_field_name("arguments"),
         _ => None,
     };
 
@@ -789,10 +786,10 @@ fn strip_return_prefix(line: &str) -> Option<&str> {
 /// Build a single assignment line.
 fn build_assignment_line(var: &str, expr: &str, indent: &str, lang: LangId) -> String {
     match lang {
-        LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+        "typescript" | "tsx" | "javascript" => {
             format!("{}const {} = {};", indent, var, expr)
         }
-        LangId::Python => {
+        "python" => {
             format!("{}{} = {}", indent, var, expr)
         }
         _ => format!("{}const {} = {};", indent, var, expr),

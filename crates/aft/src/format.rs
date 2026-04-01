@@ -252,11 +252,11 @@ pub fn detect_formatter(
 
     // 1. Per-language override from plugin config
     let lang_key = match lang {
-        LangId::TypeScript | LangId::JavaScript | LangId::Tsx => "typescript",
-        LangId::Python => "python",
-        LangId::Rust => "rust",
-        LangId::Go => "go",
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => "markdown",
+        "typescript" | "javascript" | "tsx" => "typescript",
+        "python" => "python",
+        "rust" => "rust",
+        "go" => "go",
+        _ => "markdown",
     };
     if let Some(preferred) = config.formatter.get(lang_key) {
         return resolve_explicit_formatter(preferred, &file_str, lang);
@@ -267,7 +267,7 @@ pub fn detect_formatter(
     let project_root = config.project_root.as_deref();
 
     match lang {
-        LangId::TypeScript | LangId::JavaScript | LangId::Tsx => {
+        "typescript" | "javascript" | "tsx" => {
             // biome.json / biome.jsonc → biome (check node_modules/.bin first)
             if has_project_config(project_root, &["biome.json", "biome.jsonc"]) {
                 if let Some(biome_cmd) = resolve_tool("biome", project_root) {
@@ -307,7 +307,7 @@ pub fn detect_formatter(
             // No config file found → do not format
             None
         }
-        LangId::Python => {
+        "python" => {
             // ruff.toml or pyproject.toml with ruff config → ruff
             if (has_project_config(project_root, &["ruff.toml", ".ruff.toml"])
                 || has_pyproject_tool(project_root, "ruff"))
@@ -322,7 +322,7 @@ pub fn detect_formatter(
             // No config file found → do not format
             None
         }
-        LangId::Rust => {
+        "rust" => {
             // Cargo.toml implies standard Rust formatting
             if has_project_config(project_root, &["Cargo.toml"]) && tool_available("rustfmt") {
                 Some(("rustfmt".to_string(), vec![file_str]))
@@ -330,7 +330,7 @@ pub fn detect_formatter(
                 None
             }
         }
-        LangId::Go => {
+        "go" => {
             // go.mod implies a Go project
             if has_project_config(project_root, &["go.mod"]) {
                 if tool_available("goimports") {
@@ -344,7 +344,7 @@ pub fn detect_formatter(
                 None
             }
         }
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => None,
+        _ => None,
     }
 }
 
@@ -600,18 +600,18 @@ pub fn detect_type_checker(
 
     // Per-language override from plugin config
     let lang_key = match lang {
-        LangId::TypeScript | LangId::JavaScript | LangId::Tsx => "typescript",
-        LangId::Python => "python",
-        LangId::Rust => "rust",
-        LangId::Go => "go",
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => "markdown",
+        "typescript" | "javascript" | "tsx" => "typescript",
+        "python" => "python",
+        "rust" => "rust",
+        "go" => "go",
+        _ => "markdown",
     };
     if let Some(preferred) = config.checker.get(lang_key) {
         return resolve_explicit_checker(preferred, &file_str, lang);
     }
 
     match lang {
-        LangId::TypeScript | LangId::JavaScript | LangId::Tsx => {
+        "typescript" | "javascript" | "tsx" => {
             // biome.json → biome check (lint + type errors, check node_modules/.bin first)
             if has_project_config(project_root, &["biome.json", "biome.jsonc"]) {
                 if let Some(biome_cmd) = resolve_tool("biome", project_root) {
@@ -643,7 +643,7 @@ pub fn detect_type_checker(
             }
             None
         }
-        LangId::Python => {
+        "python" => {
             // pyrightconfig.json or pyproject.toml with pyright → pyright
             if has_project_config(project_root, &["pyrightconfig.json"])
                 || has_pyproject_tool(project_root, "pyright")
@@ -668,7 +668,7 @@ pub fn detect_type_checker(
             }
             None
         }
-        LangId::Rust => {
+        "rust" => {
             // Cargo.toml implies cargo check
             if has_project_config(project_root, &["Cargo.toml"]) && tool_available("cargo") {
                 Some((
@@ -679,7 +679,7 @@ pub fn detect_type_checker(
                 None
             }
         }
-        LangId::Go => {
+        "go" => {
             // go.mod implies Go project
             if has_project_config(project_root, &["go.mod"]) {
                 if tool_available("staticcheck") {
@@ -693,7 +693,7 @@ pub fn detect_type_checker(
                 None
             }
         }
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => None,
+        _ => None,
     }
 }
 
@@ -1130,7 +1130,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_formatter(&path, LangId::Rust, &config);
+        let result = detect_formatter(&path, rust, &config);
         if tool_available("rustfmt") {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "rustfmt");
@@ -1149,7 +1149,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_formatter(&path, LangId::Go, &config);
+        let result = detect_formatter(&path, go, &config);
         if tool_available("goimports") {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "goimports");
@@ -1172,7 +1172,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_formatter(&path, LangId::Python, &config);
+        let result = detect_formatter(&path, python, &config);
         if ruff_format_available() {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "ruff");
@@ -1185,7 +1185,7 @@ mod tests {
     #[test]
     fn detect_formatter_no_config_returns_none() {
         let path = Path::new("test.ts");
-        let result = detect_formatter(path, LangId::TypeScript, &Config::default());
+        let result = detect_formatter(path, typescript, &Config::default());
         assert!(
             result.is_none(),
             "expected no formatter without project config"
@@ -1199,7 +1199,7 @@ mod tests {
         config
             .formatter
             .insert("typescript".to_string(), "biome".to_string());
-        let result = detect_formatter(path, LangId::TypeScript, &config);
+        let result = detect_formatter(path, typescript, &config);
         let (cmd, _) = result.unwrap();
         assert_eq!(cmd, "biome");
     }
@@ -1332,7 +1332,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_type_checker(&path, LangId::Rust, &config);
+        let result = detect_type_checker(&path, rust, &config);
         if tool_available("cargo") {
             let (cmd, args) = result.unwrap();
             assert_eq!(cmd, "cargo");
@@ -1351,7 +1351,7 @@ mod tests {
             project_root: Some(dir.path().to_path_buf()),
             ..Config::default()
         };
-        let result = detect_type_checker(&path, LangId::Go, &config);
+        let result = detect_type_checker(&path, go, &config);
         if tool_available("go") {
             let (cmd, _args) = result.unwrap();
             // Could be staticcheck or go vet depending on what's installed

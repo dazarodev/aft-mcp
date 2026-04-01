@@ -179,25 +179,25 @@ pub fn is_entry_point(name: &str, kind: &SymbolKind, exported: bool, lang: LangI
 
     // Test patterns by language
     match lang {
-        LangId::TypeScript | LangId::JavaScript | LangId::Tsx => {
+        "typescript" | "javascript" | "tsx" => {
             // describe, it, test (exact), or starts with test/spec
             matches!(lower.as_str(), "describe" | "it" | "test")
                 || lower.starts_with("test")
                 || lower.starts_with("spec")
         }
-        LangId::Python => {
+        "python" => {
             // starts with test_ or matches setUp/tearDown
             lower.starts_with("test_") || matches!(name, "setUp" | "tearDown")
         }
-        LangId::Rust => {
+        "rust" => {
             // starts with test_
             lower.starts_with("test_")
         }
-        LangId::Go => {
+        "go" => {
             // starts with Test (case-sensitive)
             name.starts_with("Test")
         }
-        LangId::Markdown | LangId::Css | LangId::Html | LangId::Apex => false,
+        _ => false,
     }
 }
 
@@ -362,7 +362,7 @@ pub fn extract_parameters(signature: &str, lang: LangId) -> Vec<String> {
 
         // Skip language-specific receivers
         match lang {
-            LangId::Rust => {
+            "rust" => {
                 let normalized = trimmed.replace(' ', "");
                 if normalized == "self"
                     || normalized == "&self"
@@ -372,7 +372,7 @@ pub fn extract_parameters(signature: &str, lang: LangId) -> Vec<String> {
                     continue;
                 }
             }
-            LangId::Python => {
+            "python" => {
                 if trimmed == "self" || trimmed.starts_with("self:") {
                     continue;
                 }
@@ -436,14 +436,14 @@ fn extract_param_name(param: &str, lang: LangId) -> String {
         &trimmed[3..]
     } else if trimmed.starts_with("**") {
         &trimmed[2..]
-    } else if trimmed.starts_with('*') && lang == LangId::Python {
+    } else if trimmed.starts_with('*') && lang == "python" {
         &trimmed[1..]
     } else {
         trimmed
     };
 
     // Rust: `mut name: Type` → strip `mut `
-    let working = if lang == LangId::Rust && working.starts_with("mut ") {
+    let working = if lang == "rust" && working.starts_with("mut ") {
         &working[4..]
     } else {
         working
@@ -461,10 +461,10 @@ fn extract_param_name(param: &str, lang: LangId) -> String {
     let name = name.trim_end_matches('?');
 
     // For Go, the name might be just `name Type` — take the first word
-    if lang == LangId::Go && !name.contains(' ') {
+    if lang == "go" && !name.contains(' ') {
         return name.to_string();
     }
-    if lang == LangId::Go {
+    if lang == "go" {
         return name.split_whitespace().next().unwrap_or("").to_string();
     }
 
@@ -3107,7 +3107,7 @@ export function funcB() {
             "handleRequest",
             &SymbolKind::Function,
             true,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -3118,7 +3118,7 @@ export function funcB() {
             "handleRequest",
             &SymbolKind::Method,
             true,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -3126,7 +3126,7 @@ export function funcB() {
     fn is_entry_point_main_init_patterns() {
         for name in &["main", "Main", "MAIN", "init", "setup", "bootstrap", "run"] {
             assert!(
-                is_entry_point(name, &SymbolKind::Function, false, LangId::TypeScript),
+                is_entry_point(name, &SymbolKind::Function, false, "typescript"),
                 "{} should be an entry point",
                 name
             );
@@ -3139,31 +3139,31 @@ export function funcB() {
             "describe",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "it",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "test",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "testValidation",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
         assert!(is_entry_point(
             "specHelper",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -3173,26 +3173,26 @@ export function funcB() {
             "test_login",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
         assert!(is_entry_point(
             "setUp",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
         assert!(is_entry_point(
             "tearDown",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
         // "testSomething" should NOT match Python (needs test_ prefix)
         assert!(!is_entry_point(
             "testSomething",
             &SymbolKind::Function,
             false,
-            LangId::Python
+            "python"
         ));
     }
 
@@ -3202,13 +3202,13 @@ export function funcB() {
             "test_parse",
             &SymbolKind::Function,
             false,
-            LangId::Rust
+            "rust"
         ));
         assert!(!is_entry_point(
             "TestSomething",
             &SymbolKind::Function,
             false,
-            LangId::Rust
+            "rust"
         ));
     }
 
@@ -3218,14 +3218,14 @@ export function funcB() {
             "TestParsing",
             &SymbolKind::Function,
             false,
-            LangId::Go
+            "go"
         ));
         // lowercase test should NOT match Go (needs uppercase Test prefix)
         assert!(!is_entry_point(
             "testParsing",
             &SymbolKind::Function,
             false,
-            LangId::Go
+            "go"
         ));
     }
 
@@ -3235,7 +3235,7 @@ export function funcB() {
             "helperUtil",
             &SymbolKind::Function,
             false,
-            LangId::TypeScript
+            "typescript"
         ));
     }
 
@@ -3482,7 +3482,7 @@ function testValidation() {
     fn extract_parameters_typescript() {
         let params = extract_parameters(
             "function processData(input: string, count: number): void",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["input", "count"]);
     }
@@ -3491,7 +3491,7 @@ function testValidation() {
     fn extract_parameters_typescript_optional() {
         let params = extract_parameters(
             "function fetch(url: string, options?: RequestInit): Promise<Response>",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["url", "options"]);
     }
@@ -3500,7 +3500,7 @@ function testValidation() {
     fn extract_parameters_typescript_defaults() {
         let params = extract_parameters(
             "function greet(name: string, greeting: string = \"hello\"): string",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["name", "greeting"]);
     }
@@ -3509,7 +3509,7 @@ function testValidation() {
     fn extract_parameters_typescript_rest() {
         let params = extract_parameters(
             "function sum(...numbers: number[]): number",
-            LangId::TypeScript,
+            "typescript",
         );
         assert_eq!(params, vec!["numbers"]);
     }
@@ -3518,20 +3518,20 @@ function testValidation() {
     fn extract_parameters_python_self_skipped() {
         let params = extract_parameters(
             "def process(self, data: str, count: int) -> bool",
-            LangId::Python,
+            "python",
         );
         assert_eq!(params, vec!["data", "count"]);
     }
 
     #[test]
     fn extract_parameters_python_no_self() {
-        let params = extract_parameters("def validate(input: str) -> bool", LangId::Python);
+        let params = extract_parameters("def validate(input: str) -> bool", "python");
         assert_eq!(params, vec!["input"]);
     }
 
     #[test]
     fn extract_parameters_python_star_args() {
-        let params = extract_parameters("def func(*args, **kwargs)", LangId::Python);
+        let params = extract_parameters("def func(*args, **kwargs)", "python");
         assert_eq!(params, vec!["args", "kwargs"]);
     }
 
@@ -3539,26 +3539,26 @@ function testValidation() {
     fn extract_parameters_rust_self_skipped() {
         let params = extract_parameters(
             "fn process(&self, data: &str, count: usize) -> bool",
-            LangId::Rust,
+            "rust",
         );
         assert_eq!(params, vec!["data", "count"]);
     }
 
     #[test]
     fn extract_parameters_rust_mut_self_skipped() {
-        let params = extract_parameters("fn update(&mut self, value: i32)", LangId::Rust);
+        let params = extract_parameters("fn update(&mut self, value: i32)", "rust");
         assert_eq!(params, vec!["value"]);
     }
 
     #[test]
     fn extract_parameters_rust_no_self() {
-        let params = extract_parameters("fn validate(input: &str) -> bool", LangId::Rust);
+        let params = extract_parameters("fn validate(input: &str) -> bool", "rust");
         assert_eq!(params, vec!["input"]);
     }
 
     #[test]
     fn extract_parameters_rust_mut_param() {
-        let params = extract_parameters("fn process(mut buf: Vec<u8>, len: usize)", LangId::Rust);
+        let params = extract_parameters("fn process(mut buf: Vec<u8>, len: usize)", "rust");
         assert_eq!(params, vec!["buf", "len"]);
     }
 
@@ -3566,14 +3566,14 @@ function testValidation() {
     fn extract_parameters_go() {
         let params = extract_parameters(
             "func ProcessData(input string, count int) error",
-            LangId::Go,
+            "go",
         );
         assert_eq!(params, vec!["input", "count"]);
     }
 
     #[test]
     fn extract_parameters_empty() {
-        let params = extract_parameters("function noArgs(): void", LangId::TypeScript);
+        let params = extract_parameters("function noArgs(): void", "typescript");
         assert!(
             params.is_empty(),
             "no-arg function should return empty params"
@@ -3582,13 +3582,13 @@ function testValidation() {
 
     #[test]
     fn extract_parameters_no_parens() {
-        let params = extract_parameters("const x = 42", LangId::TypeScript);
+        let params = extract_parameters("const x = 42", "typescript");
         assert!(params.is_empty(), "no parens should return empty params");
     }
 
     #[test]
     fn extract_parameters_javascript() {
-        let params = extract_parameters("function handleClick(event, target)", LangId::JavaScript);
+        let params = extract_parameters("function handleClick(event, target)", "javascript");
         assert_eq!(params, vec!["event", "target"]);
     }
 }
