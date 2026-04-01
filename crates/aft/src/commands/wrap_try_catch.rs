@@ -8,7 +8,7 @@ use tree_sitter::{Node, Parser};
 use crate::context::AppContext;
 use crate::edit;
 use crate::indent::detect_indent;
-use crate::parser::{detect_language, grammar_for, node_text, LangId};
+use crate::parser::{detect_language, grammar_for, node_text};
 use crate::protocol::{RawRequest, Response};
 
 /// Handle a `wrap_try_catch` request.
@@ -73,7 +73,7 @@ pub fn handle_wrap_try_catch(req: &RawRequest, ctx: &AppContext) -> Response {
         }
     };
 
-    if !matches!(lang, LangId::TypeScript | LangId::Tsx | LangId::JavaScript) {
+    if !matches!(lang, "typescript" | "tsx" | "javascript") {
         return Response::error(
             &req.id,
             "invalid_request",

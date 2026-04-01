@@ -1,25 +1,45 @@
 [package]
-name = "agent-file-tools"
-version = "0.7.7"
+name = "aft-mcp"
+version = "0.1.0"
 edition = "2021"
-description = "Agent File Tools — tree-sitter powered code analysis for AI agents"
-license = "MIT"
-repository = "https://github.com/cortexkit/aft"
-keywords = ["tree-sitter", "code-analysis", "ai-agent", "ast"]
-categories = ["command-line-utilities", "development-tools"]
-readme = "../../README.md"
+description = "MCP code intelligence server — aft engine with MCP JSON-RPC 2.0 wrapper"
 
 [lib]
 name = "aft"
 path = "src/lib.rs"
 
 [[bin]]
-name = "aft"
+name = "aft-mcp"
 path = "src/main.rs"
 
-[[bin]]
-name = "fake-lsp-server"
-path = "tests/lsp/fake_server.rs"
+[features]
+default = ["lang-all"]
+
+# Meta-features
+lang-all = [
+    "lang-typescript", "lang-javascript", "lang-python", "lang-rust", "lang-go",
+    "lang-markdown", "lang-css", "lang-html", "lang-apex",
+    "lang-java", "lang-ruby", "lang-c", "lang-cpp", "lang-csharp", "lang-php"
+]
+lang-web = ["lang-typescript", "lang-javascript", "lang-css", "lang-html"]
+lang-systems = ["lang-rust", "lang-go", "lang-c", "lang-cpp"]
+
+# Individual languages
+lang-typescript = ["dep:tree-sitter-typescript"]
+lang-javascript = ["dep:tree-sitter-javascript"]
+lang-python = ["dep:tree-sitter-python"]
+lang-rust = ["dep:tree-sitter-rust"]
+lang-go = ["dep:tree-sitter-go"]
+lang-markdown = ["dep:tree-sitter-md"]
+lang-css = ["dep:tree-sitter-css"]
+lang-html = ["dep:tree-sitter-html"]
+lang-apex = ["dep:tree-sitter-sfapex"]
+lang-java = ["dep:tree-sitter-java"]
+lang-ruby = ["dep:tree-sitter-ruby"]
+lang-c = ["dep:tree-sitter-c"]
+lang-cpp = ["dep:tree-sitter-cpp"]
+lang-csharp = ["dep:tree-sitter-c-sharp"]
+lang-php = ["dep:tree-sitter-php"]
 
 [dependencies]
 log = "0.4"
@@ -29,22 +49,40 @@ serde_json = "1"
 lsp-types = "0.97"
 crossbeam-channel = "0.5"
 tree-sitter = "0.26"
-tree-sitter-typescript = "0.23.2"
-tree-sitter-javascript = "0.25"
-tree-sitter-python = "0.25"
-tree-sitter-rust = "0.24"
-tree-sitter-go = "0.25"
-tree-sitter-md = "0.5"
 similar = "2"
 ast-grep-core = "0.41"
 streaming-iterator = "0.1"
 ignore = "0.4"
 notify = "8"
-
 glob = "0.3"
 which = "7"
 url = "2"
 content_inspector = "0.2.4"
+toml = "0.8"
+
+# Grammar deps — all optional
+tree-sitter-typescript = { version = "0.23.2", optional = true }
+tree-sitter-javascript = { version = "0.25", optional = true }
+tree-sitter-python = { version = "0.25", optional = true }
+tree-sitter-rust = { version = "0.24", optional = true }
+tree-sitter-go = { version = "0.25", optional = true }
+tree-sitter-md = { version = "0.5", optional = true }
+tree-sitter-css = { version = "0.25", optional = true }
+tree-sitter-html = { version = "0.23.2", optional = true }
+tree-sitter-sfapex = { version = "2.4.0", optional = true }
+tree-sitter-java = { version = "0.23", optional = true }
+tree-sitter-ruby = { version = "0.23", optional = true }
+tree-sitter-c = { version = "0.23", optional = true }
+tree-sitter-cpp = { version = "0.23", optional = true }
+tree-sitter-c-sharp = { version = "0.23", optional = true }
+tree-sitter-php = { version = "0.23", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

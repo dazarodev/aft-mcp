@@ -715,7 +715,7 @@ fn rewrite_consumer_imports(
     let lang = lang?;
 
     // Only handle TS/JS/TSX for now (the primary use case)
-    if !matches!(lang, LangId::TypeScript | LangId::Tsx | LangId::JavaScript) {
+    if !matches!(lang, "typescript" | "tsx" | "javascript") {
         return None;
     }
 

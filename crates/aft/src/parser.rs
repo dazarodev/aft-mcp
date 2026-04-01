@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::SystemTime;
 
 use streaming_iterator::StreamingIterator;
@@ -8,190 +9,43 @@ use tree_sitter::{Language, Node, Parser, Query, QueryCursor, Tree};
 
 use crate::callgraph::resolve_module_path;
 use crate::error::AftError;
+use crate::lang::LangRegistry;
 use crate::symbols::{Range, Symbol, SymbolKind, SymbolMatch};
 
 const MAX_REEXPORT_DEPTH: usize = 10;
 
-// --- Query patterns embedded at compile time ---
+/// Language identifier — string-based for pluggable extensibility.
+pub type LangId = &'static str;
 
-const TS_QUERY: &str = r#"
-;; function declarations
-(function_declaration
-  name: (identifier) @fn.name) @fn.def
+static GLOBAL_REGISTRY: OnceLock<LangRegistry> = OnceLock::new();
 
-;; arrow functions assigned to const/let/var
-(lexical_declaration
-  (variable_declarator
-    name: (identifier) @arrow.name
-    value: (arrow_function) @arrow.body)) @arrow.def
+/// Initialize the global language registry. Call once at startup.
+pub fn init_lang_registry(registry: LangRegistry) {
+    GLOBAL_REGISTRY.set(registry).ok();
+}
 
-;; class declarations
-(class_declaration
-  name: (type_identifier) @class.name) @class.def
-
-;; method definitions inside classes
-(class_declaration
-  name: (type_identifier) @method.class_name
-  body: (class_body
-    (method_definition
-      name: (property_identifier) @method.name) @method.def))
-
-;; interface declarations
-(interface_declaration
-  name: (type_identifier) @interface.name) @interface.def
-
-;; enum declarations
-(enum_declaration
-  name: (identifier) @enum.name) @enum.def
-
-;; type alias declarations
-(type_alias_declaration
-  name: (type_identifier) @type_alias.name) @type_alias.def
-
-;; top-level const/let variable declarations
-(lexical_declaration
-  (variable_declarator
-    name: (identifier) @var.name)) @var.def
-
-;; export statement wrappers (top-level only)
-(export_statement) @export.stmt
-"#;
-
-const JS_QUERY: &str = r#"
-;; function declarations
-(function_declaration
-  name: (identifier) @fn.name) @fn.def
-
-;; arrow functions assigned to const/let/var
-(lexical_declaration
-  (variable_declarator
-    name: (identifier) @arrow.name
-    value: (arrow_function) @arrow.body)) @arrow.def
-
-;; class declarations
-(class_declaration
-  name: (identifier) @class.name) @class.def
-
-;; method definitions inside classes
-(class_declaration
-  name: (identifier) @method.class_name
-  body: (class_body
-    (method_definition
-      name: (property_identifier) @method.name) @method.def))
-
-;; top-level const/let variable declarations
-(lexical_declaration
-  (variable_declarator
-    name: (identifier) @var.name)) @var.def
-
-;; export statement wrappers (top-level only)
-(export_statement) @export.stmt
-"#;
-
-const PY_QUERY: &str = r#"
-;; function definitions (top-level and nested)
-(function_definition
-  name: (identifier) @fn.name) @fn.def
-
-;; class definitions
-(class_definition
-  name: (identifier) @class.name) @class.def
-
-;; decorated definitions (wraps function_definition or class_definition)
-(decorated_definition
-  (decorator) @dec.decorator) @dec.def
-"#;
-
-const RS_QUERY: &str = r#"
-;; free functions (with optional visibility)
-(function_item
-  name: (identifier) @fn.name) @fn.def
-
-;; struct items
-(struct_item
-  name: (type_identifier) @struct.name) @struct.def
-
-;; enum items
-(enum_item
-  name: (type_identifier) @enum.name) @enum.def
-
-;; trait items
-(trait_item
-  name: (type_identifier) @trait.name) @trait.def
-
-;; impl blocks — capture the whole block to find methods
-(impl_item) @impl.def
-
-;; visibility modifiers on any item
-(visibility_modifier) @vis.mod
-"#;
-
-const GO_QUERY: &str = r#"
-;; function declarations
-(function_declaration
-  name: (identifier) @fn.name) @fn.def
-
-;; method declarations (with receiver)
-(method_declaration
-  name: (field_identifier) @method.name) @method.def
-
-;; type declarations (struct and interface)
-(type_declaration
-  (type_spec
-    name: (type_identifier) @type.name
-    type: (_) @type.body)) @type.def
-"#;
-
-/// Supported language identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum LangId {
-    TypeScript,
-    Tsx,
-    JavaScript,
-    Python,
-    Rust,
-    Go,
-    Markdown,
+/// Get the global registry (creates default if not explicitly initialized).
+pub fn lang_registry() -> &'static LangRegistry {
+    GLOBAL_REGISTRY.get_or_init(LangRegistry::new)
 }
 
 /// Maps file extension to language identifier.
 pub fn detect_language(path: &Path) -> Option<LangId> {
     let ext = path.extension()?.to_str()?;
-    match ext {
-        "ts" => Some(LangId::TypeScript),
-        "tsx" => Some(LangId::Tsx),
-        "js" | "jsx" => Some(LangId::JavaScript),
-        "py" => Some(LangId::Python),
-        "rs" => Some(LangId::Rust),
-        "go" => Some(LangId::Go),
-        "md" | "markdown" | "mdx" => Some(LangId::Markdown),
-        _ => None,
-    }
+    lang_registry().detect(ext).map(|l| l.id())
 }
 
 /// Returns the tree-sitter Language grammar for a given LangId.
 pub fn grammar_for(lang: LangId) -> Language {
-    match lang {
-        LangId::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
-        LangId::Tsx => tree_sitter_typescript::LANGUAGE_TSX.into(),
-        LangId::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
-        LangId::Python => tree_sitter_python::LANGUAGE.into(),
-        LangId::Rust => tree_sitter_rust::LANGUAGE.into(),
-        LangId::Go => tree_sitter_go::LANGUAGE.into(),
-        LangId::Markdown => tree_sitter_md::LANGUAGE.into(),
-    }
+    lang_registry()
+        .get(lang)
+        .map(|l| l.grammar())
+        .unwrap_or_else(|| panic!("no grammar for language: {}", lang))
 }
 
 /// Returns the query pattern string for a given LangId, if implemented.
 fn query_for(lang: LangId) -> Option<&'static str> {
-    match lang {
-        LangId::TypeScript | LangId::Tsx => Some(TS_QUERY),
-        LangId::JavaScript => Some(JS_QUERY),
-        LangId::Python => Some(PY_QUERY),
-        LangId::Rust => Some(RS_QUERY),
-        LangId::Go => Some(GO_QUERY),
-        LangId::Markdown => None,
-    }
+    lang_registry().get(lang).and_then(|l| l.symbol_query())
 }
 
 /// Cached parse result: mtime at parse time + the tree.
@@ -247,9 +101,9 @@ impl FileParser {
             let grammar = grammar_for(lang);
             let mut parser = Parser::new();
             parser.set_language(&grammar).map_err(|e| {
-                log::error!("grammar init failed for {:?}: {}", lang, e);
+                log::error!("grammar init failed for {}: {}", lang, e);
                 AftError::ParseError {
-                    message: format!("grammar init failed for {:?}: {}", lang, e),
+                    message: format!("grammar init failed for {}: {}", lang, e),
                 }
             })?;
 
@@ -293,30 +147,27 @@ impl FileParser {
         let (tree, lang) = self.parse(path)?;
         let root = tree.root_node();
 
-        // Markdown uses direct tree walking, not query patterns
-        if lang == LangId::Markdown {
-            return extract_md_symbols(&source, &root);
-        }
-
-        let query_src = query_for(lang).ok_or_else(|| AftError::InvalidRequest {
-            message: format!("no query patterns implemented for {:?} yet", lang),
-        })?;
+        // Check if language has a query; if not, use markdown fallback
+        let query_src = match query_for(lang) {
+            Some(q) => q,
+            None => return extract_md_symbols(&source, &root),
+        };
 
         let grammar = grammar_for(lang);
         let query = Query::new(&grammar, query_src).map_err(|e| {
-            log::error!("query compile failed for {:?}: {}", lang, e);
+            log::error!("query compile failed for {}: {}", lang, e);
             AftError::ParseError {
-                message: format!("query compile error for {:?}: {}", lang, e),
+                message: format!("query compile error for {}: {}", lang, e),
             }
         })?;
 
         match lang {
-            LangId::TypeScript | LangId::Tsx => extract_ts_symbols(&source, &root, &query),
-            LangId::JavaScript => extract_js_symbols(&source, &root, &query),
-            LangId::Python => extract_py_symbols(&source, &root, &query),
-            LangId::Rust => extract_rs_symbols(&source, &root, &query),
-            LangId::Go => extract_go_symbols(&source, &root, &query),
-            LangId::Markdown => Ok(vec![]), // handled by extract_md_symbols
+            "typescript" | "tsx" => extract_ts_symbols(&source, &root, &query),
+            "javascript" => extract_js_symbols(&source, &root, &query),
+            "python" => extract_py_symbols(&source, &root, &query),
+            "rust" => extract_rs_symbols(&source, &root, &query),
+            "go" => extract_go_symbols(&source, &root, &query),
+            _ => extract_md_symbols(&source, &root),
         }
     }
 }
@@ -345,7 +196,7 @@ pub(crate) fn node_range_with_decorators(node: &Node, source: &str, lang: LangId
     while let Some(prev) = current.prev_sibling() {
         let kind = prev.kind();
         let should_include = match lang {
-            LangId::Rust => {
+            "rust" => {
                 // Include #[...] attributes
                 kind == "attribute_item"
                     // Include /// doc comments (but not regular // comments)
@@ -355,22 +206,22 @@ pub(crate) fn node_range_with_decorators(node: &Node, source: &str, lang: LangId
                     || (kind == "block_comment"
                         && node_text(source, &prev).starts_with("/**"))
             }
-            LangId::TypeScript | LangId::Tsx | LangId::JavaScript => {
+            "typescript" | "tsx" | "javascript" => {
                 // Include @decorator
                 kind == "decorator"
                     // Include /** JSDoc */ comments
                     || (kind == "comment"
                         && node_text(source, &prev).starts_with("/**"))
             }
-            LangId::Go => {
+            "go" => {
                 // Include doc comments only if immediately above (no blank line gap)
                 kind == "comment" && is_adjacent_line(&prev, &current, source)
             }
-            LangId::Python => {
+            "python" => {
                 // Decorators are handled by decorated_definition capture
                 false
             }
-            LangId::Markdown => false,
+            _ => false,
         };
 
         if should_include {
@@ -484,7 +335,7 @@ fn extract_signature(source: &str, node: &Node) -> String {
 
 /// Extract symbols from TypeScript / TSX source.
 fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Symbol>, AftError> {
-    let lang = LangId::TypeScript;
+    let lang: LangId = "typescript";
     let capture_names = query.capture_names();
 
     let export_ranges = collect_export_ranges(source, root, query);
@@ -668,7 +519,7 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
 
 /// Extract symbols from JavaScript source.
 fn extract_js_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Symbol>, AftError> {
-    let lang = LangId::JavaScript;
+    let lang: LangId = "javascript";
     let capture_names = query.capture_names();
 
     let export_ranges = collect_export_ranges(source, root, query);
@@ -784,7 +635,7 @@ fn py_scope_chain(node: &Node, source: &str) -> Vec<String> {
 
 /// Extract symbols from Python source.
 fn extract_py_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Symbol>, AftError> {
-    let lang = LangId::Python;
+    let lang: LangId = "python";
     let capture_names = query.capture_names();
 
     let mut symbols = Vec::new();
@@ -960,7 +811,7 @@ fn extract_py_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
 /// Extract symbols from Rust source.
 /// Handles: free functions, struct, enum, trait (as Interface), impl methods with scope chains.
 fn extract_rs_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Symbol>, AftError> {
-    let lang = LangId::Rust;
+    let lang: LangId = "rust";
     let capture_names = query.capture_names();
 
     // Collect all visibility_modifier byte ranges first
@@ -1179,7 +1030,7 @@ fn extract_rs_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
 /// Handles: functions, methods (with receiver scope chain), struct/interface types,
 /// uppercase-first-letter export detection.
 fn extract_go_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Symbol>, AftError> {
-    let lang = LangId::Go;
+    let lang: LangId = "go";
     let capture_names = query.capture_names();
 
     let is_go_exported = |name: &str| -> bool {
@@ -1512,7 +1363,7 @@ impl TreeSitterProvider {
         requested_name: &str,
     ) -> Result<Vec<ReExportTarget>, AftError> {
         let (source, tree, lang) = self.read_parsed_file(file)?;
-        if !matches!(lang, LangId::TypeScript | LangId::Tsx | LangId::JavaScript) {
+        if !matches!(lang, "typescript" | "tsx" | "javascript") {
             return Ok(Vec::new());
         }
 
@@ -1580,7 +1431,7 @@ impl TreeSitterProvider {
         symbols: &[Symbol],
     ) -> Result<Vec<SymbolMatch>, AftError> {
         let (source, tree, lang) = self.read_parsed_file(file)?;
-        if !matches!(lang, LangId::TypeScript | LangId::Tsx | LangId::JavaScript) {
+        if !matches!(lang, "typescript" | "tsx" | "javascript") {
             return Ok(Vec::new());
         }
 
@@ -1874,20 +1725,20 @@ mod tests {
     fn detect_ts() {
         assert_eq!(
             detect_language(Path::new("foo.ts")),
-            Some(LangId::TypeScript)
+            Some("typescript")
         );
     }
 
     #[test]
     fn detect_tsx() {
-        assert_eq!(detect_language(Path::new("foo.tsx")), Some(LangId::Tsx));
+        assert_eq!(detect_language(Path::new("foo.tsx")), Some("tsx"));
     }
 
     #[test]
     fn detect_js() {
         assert_eq!(
             detect_language(Path::new("foo.js")),
-            Some(LangId::JavaScript)
+            Some("javascript")
         );
     }
 
@@ -1895,23 +1746,23 @@ mod tests {
     fn detect_jsx() {
         assert_eq!(
             detect_language(Path::new("foo.jsx")),
-            Some(LangId::JavaScript)
+            Some("javascript")
         );
     }
 
     #[test]
     fn detect_py() {
-        assert_eq!(detect_language(Path::new("foo.py")), Some(LangId::Python));
+        assert_eq!(detect_language(Path::new("foo.py")), Some("python"));
     }
 
     #[test]
     fn detect_rs() {
-        assert_eq!(detect_language(Path::new("foo.rs")), Some(LangId::Rust));
+        assert_eq!(detect_language(Path::new("foo.rs")), Some("rust"));
     }
 
     #[test]
     fn detect_go() {
-        assert_eq!(detect_language(Path::new("foo.go")), Some(LangId::Go));
+        assert_eq!(detect_language(Path::new("foo.go")), Some("go"));
     }
 
     #[test]

@@ -35,9 +35,12 @@ tmp/
 
 
 # Added by cargo
-
 /target
+
+# Downloaded binary (install.sh puts it here)
+/bin/
 .sisyphus/
+.worktrees/
 local-ignore/
 
 # Nested lockfiles (root bun.lock is the source of truth)
