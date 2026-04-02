@@ -64,6 +64,24 @@ Once installed, Claude Code automatically discovers the MCP tools. Ask your agen
 - "what breaks if I change this?" — impact analysis before refactoring
 - "trace data flow through this variable" — understand how data moves
 
+### Teach Claude when to use aft-mcp
+
+Add this to your project's `CLAUDE.md` (or `~/.claude/CLAUDE.md` for global):
+
+```markdown
+## MCP: aft-mcp
+
+Use the `aft` MCP tool for code navigation instead of reading entire files:
+
+- `outline` before reading a file — to understand its structure first
+- `zoom` to read a specific symbol instead of the whole file
+- `callers` / `call_tree` before refactoring — to understand impact
+- `impact` before changing a function signature
+- `ast_search` for structural code search (better than grep for code patterns)
+
+Prefer aft tools over raw file reads when exploring unfamiliar code.
+```
+
 ## Uninstall
 
 ```bash
