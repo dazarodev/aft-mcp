@@ -12,6 +12,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: Test
@@ -21,41 +22,8 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Rust tests
         run: cargo test
-
-      - name: Build aft binary (needed for e2e tests)
-        run: cargo build -p aft-mcp
-
-      - name: Install JS dependencies
-        run: bun install
-
-      - name: TypeScript typecheck
-        run: bun run typecheck
-
-      - name: Plugin tests
-        run: bun run test
-
-      - name: Lint
-        run: bun run lint
-
-  publish-crates:
-    name: Publish to crates.io
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Publish to crates.io
-        run: cargo publish --package aft-mcp
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   build-darwin-arm64:
     name: Build macOS ARM64
@@ -189,10 +157,6 @@ jobs:
       - name: Ensure latest npm (for trusted publishing)
         run: npm install -g npm@latest
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Download darwin-arm64 binary
         uses: actions/download-artifact@v4
         with:
@@ -230,30 +194,11 @@ jobs:
           chmod +x packages/npm/linux-arm64/bin/aft-mcp
           chmod +x packages/npm/linux-x64/bin/aft-mcp
 
-      - name: Sync versions from tag
-        run: node scripts/version-sync.mjs --from-tag
-
-      - name: Validate packages
-        run: node scripts/validate-packages.mjs
-
-      - name: Install plugin dependencies
-        run: bun install
-        working-directory: packages/opencode-plugin
-
-      - name: Build plugin
-        run: bun run build
-        working-directory: packages/opencode-plugin
-
-      # Uses npm Trusted Publishing (OIDC) — configured per-package on npmjs.com
       - name: Publish platform packages
         run: |
           for pkg in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
             npm publish --access public --provenance "packages/npm/$pkg"
           done
-
-      - name: Publish @cortexkit/aft-opencode
-        run: npm publish --access public --provenance
-        working-directory: packages/opencode-plugin
 
   github-release:
     name: Create GitHub Release

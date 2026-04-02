@@ -1,1 +1,0 @@
-export { funcA } from "./sample";
