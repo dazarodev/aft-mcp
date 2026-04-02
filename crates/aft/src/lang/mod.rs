@@ -41,6 +41,49 @@ pub trait LangSupport: Send + Sync {
     fn has_imports(&self) -> bool {
         false
     }
+
+    /// Configuration for identifying entry points (test functions, lifecycle methods).
+    /// Override to provide language-specific test patterns.
+    fn entry_point_config(&self) -> EntryPointConfig {
+        EntryPointConfig::default()
+    }
+
+    /// Character used to mark meta-variables in ast-grep patterns.
+    /// Languages where `$` is not a valid identifier character should return `'\u{00B5}'` (µ).
+    fn expando_char(&self) -> char {
+        '$'
+    }
+
+    /// Access modifier keywords that mark a symbol as exported/public.
+    /// Used by the generic symbol extractor to set the `exported` flag.
+    fn export_modifiers(&self) -> &'static [&'static str] {
+        &[]
+    }
+}
+
+/// Configuration for language-specific entry point detection.
+#[derive(Debug, Clone)]
+pub struct EntryPointConfig {
+    /// Exact function names that are entry points (e.g. "describe", "it" for JS test frameworks).
+    pub test_exact_names: &'static [&'static str],
+    /// Prefixes that identify test/entry functions (e.g. "test_" for Python, "Test" for Go).
+    pub test_prefixes: &'static [&'static str],
+    /// Whether prefix matching is case-sensitive (Go's "Test" prefix is case-sensitive).
+    pub case_sensitive: bool,
+    /// Framework lifecycle methods treated as entry points (case-sensitive exact match).
+    /// E.g. LWC: connectedCallback, renderedCallback; React: componentDidMount, render.
+    pub lifecycle_methods: &'static [&'static str],
+}
+
+impl Default for EntryPointConfig {
+    fn default() -> Self {
+        Self {
+            test_exact_names: &[],
+            test_prefixes: &[],
+            case_sensitive: false,
+            lifecycle_methods: &[],
+        }
+    }
 }
 
 /// Preferred indent style for a language.

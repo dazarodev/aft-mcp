@@ -6,3 +6,15 @@
 #
 # Project root override (default: auto-detect from CWD).
 # root = "/path/to/project"
+#
+# Framework lifecycle methods to treat as entry points for trace_to.
+# These are project-specific (not language-specific) because frameworks
+# like LWC, React, Angular, Vue are per-project choices.
+#
+# [entry_points]
+# lifecycle = [
+#   "connectedCallback",    # LWC
+#   "disconnectedCallback", # LWC
+#   "renderedCallback",     # LWC
+#   "errorCallback",        # LWC
+# ]

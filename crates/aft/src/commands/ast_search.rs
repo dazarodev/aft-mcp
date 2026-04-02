@@ -45,12 +45,13 @@ pub fn handle_ast_search(req: &RawRequest, ctx: &AppContext) -> Response {
     let lang = match AstGrepLang::from_str(lang_str) {
         Some(l) => l,
         None => {
+            let available = AstGrepLang::available_languages().join(", ");
             return Response::error(
                 &req.id,
                 "invalid_request",
                 format!(
-                    "ast_search: unsupported language '{}'. Supported: typescript, tsx, javascript, python, rust, go",
-                    lang_str
+                    "ast_search: unsupported language '{}'. Supported: {}",
+                    lang_str, available
                 ),
             );
         }

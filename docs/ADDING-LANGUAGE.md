@@ -23,6 +23,12 @@ Copy `crates/aft/src/lang/markdown.rs` (simplest) and fill in:
 - `default_indent()` — `IndentPreference::Spaces(4)` or `IndentPreference::Tabs`
 - `has_imports()` — `true` if language has import/include system
 
+Optional overrides (only if the language needs them):
+
+- `entry_point_config()` — test function patterns (exact names, prefixes, case sensitivity)
+- `expando_char()` — `'\u{00B5}'` for languages where `$` is not a valid identifier (Python, Rust)
+- `export_modifiers()` — access modifier keywords like `&["public", "global"]` for exported detection
+
 ## Symbol Queries
 
 To enable symbol extraction (`outline`, `zoom` commands), create a `.scm` query file in `crates/aft/src/queries/` and return it from `symbol_query()` via `include_str!`.

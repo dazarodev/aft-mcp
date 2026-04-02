@@ -35,6 +35,7 @@ pub mod lsp_hints;
 pub mod parser;
 pub mod protocol;
 pub mod symbols;
+pub mod template_bindings;
 
 #[cfg(test)]
 mod tests {

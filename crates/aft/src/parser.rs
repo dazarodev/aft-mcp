@@ -18,10 +18,21 @@ const MAX_REEXPORT_DEPTH: usize = 10;
 pub type LangId = &'static str;
 
 static GLOBAL_REGISTRY: OnceLock<LangRegistry> = OnceLock::new();
+static GLOBAL_LIFECYCLE: OnceLock<Vec<String>> = OnceLock::new();
 
 /// Initialize the global language registry. Call once at startup.
 pub fn init_lang_registry(registry: LangRegistry) {
     GLOBAL_REGISTRY.set(registry).ok();
+}
+
+/// Initialize framework lifecycle entry points from aft.toml config.
+pub fn init_lifecycle_config(lifecycle: Vec<String>) {
+    GLOBAL_LIFECYCLE.set(lifecycle).ok();
+}
+
+/// Get configured framework lifecycle method names (from aft.toml `[entry_points]`).
+pub fn lifecycle_methods() -> &'static [String] {
+    GLOBAL_LIFECYCLE.get().map(|v| v.as_slice()).unwrap_or(&[])
 }
 
 /// Get the global registry (creates default if not explicitly initialized).
@@ -406,6 +417,9 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
         let mut type_alias_def_node = None;
         let mut var_name_node = None;
         let mut var_def_node = None;
+        let mut prop_class_name_node = None;
+        let mut prop_name_node = None;
+        let mut prop_def_node = None;
 
         for cap in m.captures {
             let Some(&name) = capture_names.get(cap.index as usize) else {
@@ -429,7 +443,9 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
                 "type_alias.def" => type_alias_def_node = Some(cap.node),
                 "var.name" => var_name_node = Some(cap.node),
                 "var.def" => var_def_node = Some(cap.node),
-                // var.value/var.decl removed — not needed
+                "prop.class_name" => prop_class_name_node = Some(cap.node),
+                "prop.name" => prop_name_node = Some(cap.node),
+                "prop.def" => prop_def_node = Some(cap.node),
                 _ => {}
             }
         }
@@ -550,6 +566,22 @@ fn extract_ts_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
                 });
             }
         }
+
+        // Class field/property declarations (e.g. @Input() field, @track prop)
+        if let (Some(class_name_node), Some(name_node), Some(def_node)) =
+            (prop_class_name_node, prop_name_node, prop_def_node)
+        {
+            let class_name = node_text(source, &class_name_node).to_string();
+            symbols.push(Symbol {
+                name: node_text(source, &name_node).to_string(),
+                kind: SymbolKind::Property,
+                range: node_range(&def_node),
+                signature: Some(extract_signature(source, &def_node)),
+                scope_chain: vec![class_name.clone()],
+                exported: false,
+                parent: Some(class_name),
+            });
+        }
     }
 
     // Deduplicate: methods can appear as both class and method captures
@@ -581,6 +613,9 @@ fn extract_js_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
         let mut method_class_name_node = None;
         let mut method_name_node = None;
         let mut method_def_node = None;
+        let mut prop_class_name_node = None;
+        let mut prop_name_node = None;
+        let mut prop_def_node = None;
 
         for cap in m.captures {
             let Some(&name) = capture_names.get(cap.index as usize) else {
@@ -596,6 +631,9 @@ fn extract_js_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
                 "method.class_name" => method_class_name_node = Some(cap.node),
                 "method.name" => method_name_node = Some(cap.node),
                 "method.def" => method_def_node = Some(cap.node),
+                "prop.class_name" => prop_class_name_node = Some(cap.node),
+                "prop.name" => prop_name_node = Some(cap.node),
+                "prop.def" => prop_def_node = Some(cap.node),
                 _ => {}
             }
         }
@@ -644,6 +682,22 @@ fn extract_js_symbols(source: &str, root: &Node, query: &Query) -> Result<Vec<Sy
                 name: node_text(source, &name_node).to_string(),
                 kind: SymbolKind::Method,
                 range: node_range_with_decorators(&def_node, source, lang),
+                signature: Some(extract_signature(source, &def_node)),
+                scope_chain: vec![class_name.clone()],
+                exported: false,
+                parent: Some(class_name),
+            });
+        }
+
+        // Class field definitions (e.g. @track processedItems, @api label)
+        if let (Some(class_name_node), Some(name_node), Some(def_node)) =
+            (prop_class_name_node, prop_name_node, prop_def_node)
+        {
+            let class_name = node_text(source, &class_name_node).to_string();
+            symbols.push(Symbol {
+                name: node_text(source, &name_node).to_string(),
+                kind: SymbolKind::Property,
+                range: node_range(&def_node),
                 signature: Some(extract_signature(source, &def_node)),
                 scope_chain: vec![class_name.clone()],
                 exported: false,
@@ -1264,6 +1318,7 @@ fn extract_generic_symbols(
             "enum" => SymbolKind::Enum,
             "type" | "type_alias" => SymbolKind::TypeAlias,
             "var" => SymbolKind::Variable,
+            "prop" => SymbolKind::Property,
             "tag" | "script" | "style" | "heading" => SymbolKind::Heading,
             _ => continue,
         };
@@ -1319,8 +1374,10 @@ fn extract_generic_symbols(
             let parent = find_generic_parent(def_node, source, lang);
             let scope_chain: Vec<String> = parent.iter().cloned().collect();
 
+            let exported = is_node_exported(def_node, source, lang);
+
             symbols.push(Symbol {
-                exported: false,
+                exported,
                 name,
                 kind,
                 range: node_range_with_decorators(def_node, source, lang),
@@ -1333,6 +1390,55 @@ fn extract_generic_symbols(
 
     dedup_symbols(&mut symbols);
     Ok(symbols)
+}
+
+/// Check whether a definition node has access modifiers that mark it as exported/public.
+///
+/// Scans the node's direct children for modifier keywords defined by the language's
+/// `export_modifiers()`. Works across grammars that store modifiers as direct children
+/// (Java, Apex, C#, PHP) or in a `modifiers` container node.
+fn is_node_exported(node: &Node, source: &str, lang: LangId) -> bool {
+    let modifiers = lang_registry()
+        .get(lang)
+        .map(|l| l.export_modifiers())
+        .unwrap_or(&[]);
+    if modifiers.is_empty() {
+        return false;
+    }
+    let mut cursor = node.walk();
+    if !cursor.goto_first_child() {
+        return false;
+    }
+    loop {
+        let child = cursor.node();
+        let kind = child.kind();
+        // Direct modifier keyword match (e.g. "public" node in Apex/Java)
+        if modifiers.iter().any(|m| *m == node_text(source, &child)) {
+            return true;
+        }
+        // Check inside modifier container nodes (e.g. "modifiers" wrapper)
+        if kind.contains("modifier") {
+            let mut inner = child.walk();
+            if inner.goto_first_child() {
+                loop {
+                    let inner_child = inner.node();
+                    if modifiers
+                        .iter()
+                        .any(|m| *m == node_text(source, &inner_child))
+                    {
+                        return true;
+                    }
+                    if !inner.goto_next_sibling() {
+                        break;
+                    }
+                }
+            }
+        }
+        if !cursor.goto_next_sibling() {
+            break;
+        }
+    }
+    false
 }
 
 /// Walk up the AST to find the nearest named parent scope container.

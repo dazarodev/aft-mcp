@@ -33,4 +33,8 @@ impl LangSupport for CSharpLang {
     fn has_imports(&self) -> bool {
         true
     }
+
+    fn export_modifiers(&self) -> &'static [&'static str] {
+        &["public"]
+    }
 }

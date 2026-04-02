@@ -1,6 +1,6 @@
 use tree_sitter::Language;
 
-use super::{IndentPreference, LangSupport};
+use super::{EntryPointConfig, IndentPreference, LangSupport};
 
 pub struct GoLang;
 
@@ -39,5 +39,14 @@ impl LangSupport for GoLang {
 
     fn has_imports(&self) -> bool {
         true
+    }
+
+    fn entry_point_config(&self) -> EntryPointConfig {
+        EntryPointConfig {
+            test_exact_names: &[],
+            test_prefixes: &["Test"],
+            case_sensitive: true,
+            lifecycle_methods: &[],
+        }
     }
 }

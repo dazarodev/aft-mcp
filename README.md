@@ -91,7 +91,7 @@ rm ~/.claude/bin/aft-mcp
 
 ## Configuration
 
-Create `aft.toml` in your project root or `~/.config/aft/config.toml`:
+Create `aft.toml` in your **project root** (next to `package.json`, `sfdx-project.json`, etc.) or `~/.config/aft/config.toml` for global defaults. Project-level config takes priority.
 
 ```toml
 # Activate only specific languages (default: all)
@@ -99,6 +99,17 @@ languages = ["typescript", "javascript", "python", "rust"]
 
 # Project root override (default: auto-detect)
 # root = "/path/to/project"
+
+# Framework lifecycle methods treated as entry points for trace_to.
+# Add methods your framework calls automatically (LWC, React, Angular, Vue, etc.)
+# No rebuild needed — just edit this file and restart Claude Code.
+[entry_points]
+lifecycle = [
+  "connectedCallback",    # LWC
+  "disconnectedCallback", # LWC
+  "renderedCallback",     # LWC
+  "errorCallback",        # LWC
+]
 ```
 
 ## Adding language support

@@ -8,6 +8,19 @@ pub struct AftConfig {
     pub languages: Option<Vec<String>>,
     /// Project root override.
     pub root: Option<PathBuf>,
+    /// Framework-specific entry point configuration.
+    #[serde(default)]
+    pub entry_points: EntryPointsConfig,
+}
+
+/// Framework lifecycle methods to treat as entry points.
+/// Configured per-project in aft.toml because frameworks (LWC, React, Angular, Vue)
+/// are project-specific, not language-specific.
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct EntryPointsConfig {
+    /// Method names that are entry points (e.g. connectedCallback for LWC).
+    #[serde(default)]
+    pub lifecycle: Vec<String>,
 }
 
 impl AftConfig {

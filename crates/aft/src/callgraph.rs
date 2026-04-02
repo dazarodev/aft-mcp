@@ -16,7 +16,7 @@ use crate::edit::line_col_to_byte;
 use crate::error::AftError;
 use crate::imports::{self, ImportBlock};
 use crate::language::LanguageProvider;
-use crate::parser::{detect_language, grammar_for, LangId};
+use crate::parser::{detect_language, grammar_for, lang_registry, lifecycle_methods, LangId};
 use crate::symbols::SymbolKind;
 
 // ---------------------------------------------------------------------------
@@ -177,28 +177,47 @@ pub fn is_entry_point(name: &str, kind: &SymbolKind, exported: bool, lang: LangI
         return true;
     }
 
-    // Test patterns by language
-    match lang {
-        "typescript" | "javascript" | "tsx" => {
-            // describe, it, test (exact), or starts with test/spec
-            matches!(lower.as_str(), "describe" | "it" | "test")
-                || lower.starts_with("test")
-                || lower.starts_with("spec")
+    // Language-specific test/entry patterns via registry
+    let config = lang_registry()
+        .get(lang)
+        .map(|l| l.entry_point_config())
+        .unwrap_or_default();
+
+    // Exact test names
+    if config.case_sensitive {
+        if config.test_exact_names.contains(&name) {
+            return true;
         }
-        "python" => {
-            // starts with test_ or matches setUp/tearDown
-            lower.starts_with("test_") || matches!(name, "setUp" | "tearDown")
-        }
-        "rust" => {
-            // starts with test_
-            lower.starts_with("test_")
-        }
-        "go" => {
-            // starts with Test (case-sensitive)
-            name.starts_with("Test")
-        }
-        _ => false,
+    } else if config
+        .test_exact_names
+        .iter()
+        .any(|n| n.eq_ignore_ascii_case(name))
+    {
+        return true;
     }
+
+    // Test prefixes
+    for prefix in config.test_prefixes {
+        if config.case_sensitive {
+            if name.starts_with(prefix) {
+                return true;
+            }
+        } else if lower.starts_with(&prefix.to_lowercase()) {
+            return true;
+        }
+    }
+
+    // Language-level lifecycle methods (from LangSupport trait)
+    if config.lifecycle_methods.contains(&name) {
+        return true;
+    }
+
+    // Project-level lifecycle methods (from aft.toml [entry_points].lifecycle)
+    if lifecycle_methods().iter().any(|m| m == name) {
+        return true;
+    }
+
+    false
 }
 
 // ---------------------------------------------------------------------------
@@ -852,6 +871,50 @@ impl CallGraph {
                             resolved,
                         });
                 }
+            }
+        }
+
+        // --- Template bindings: scan sibling HTML files for attribute references ---
+        // For each JS/TS file, find sibling .html template and extract {bindings}
+        // from attributes. These become synthetic "callers" from the template file.
+        for source_file in &all_files {
+            let ext = source_file
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+            if !matches!(ext, "js" | "jsx" | "ts" | "tsx") {
+                continue;
+            }
+            let template = match crate::template_bindings::find_sibling_template(source_file) {
+                Some(t) => t,
+                None => continue,
+            };
+            let bindings = crate::template_bindings::extract_template_bindings(&template);
+            if bindings.is_empty() {
+                continue;
+            }
+            let canon_source = Arc::new(
+                std::fs::canonicalize(source_file).unwrap_or_else(|_| source_file.clone()),
+            );
+            let canon_template = Arc::new(
+                std::fs::canonicalize(&template).unwrap_or_else(|_| template.clone()),
+            );
+            for binding in &bindings {
+                let template_symbol: SharedStr =
+                    Arc::from(format!("(template: {})", binding.attribute));
+                // Add reverse edge: the template "calls" the JS symbol
+                reverse
+                    .entry(canon_source.as_ref().clone())
+                    .or_default()
+                    .entry(binding.identifier.clone())
+                    .or_default()
+                    .push(IndexedCallerSite {
+                        caller_file: Arc::clone(&canon_template),
+                        caller_symbol: Arc::clone(&template_symbol),
+                        line: binding.line,
+                        col: 0,
+                        resolved: true,
+                    });
             }
         }
 

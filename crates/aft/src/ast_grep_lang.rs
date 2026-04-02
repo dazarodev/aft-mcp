@@ -1,7 +1,9 @@
 //! AST-grep language implementations for ast-grep-core.
 //!
-//! Provides `AstGrepLang` enum that implements `Language` and `LanguageExt`
-//! traits from ast-grep-core, mapping to our tree-sitter language grammars.
+//! Provides `AstGrepLang` — a registry-backed struct that implements `Language`
+//! and `LanguageExt` traits from ast-grep-core. Any language registered in the
+//! `LangRegistry` with non-empty `call_node_kinds` is automatically available
+//! for structural pattern matching.
 
 use std::borrow::Cow;
 
@@ -10,57 +12,65 @@ use ast_grep_core::matcher::PatternError;
 use ast_grep_core::tree_sitter::{LanguageExt, StrDoc, TSLanguage};
 use ast_grep_core::Pattern;
 
-use crate::parser::LangId;
+use crate::parser::{lang_registry, LangId};
 
-/// Supported languages for AST pattern matching via ast-grep.
+/// Registry-backed language for AST pattern matching via ast-grep.
+///
+/// Created from any language ID in the `LangRegistry` that supports
+/// structural analysis (has non-empty `call_node_kinds`).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AstGrepLang {
-    TypeScript,
-    Tsx,
-    JavaScript,
-    Python,
-    Rust,
-    Go,
+pub struct AstGrepLang {
+    lang_id: &'static str,
+}
+
+/// Common aliases for language IDs (short forms → canonical registry IDs).
+fn resolve_alias(s: &str) -> &str {
+    match s {
+        "ts" | "mts" | "cts" => "typescript",
+        "tsx" => "tsx",
+        "js" | "jsx" | "mjs" | "cjs" => "javascript",
+        "py" | "pyi" => "python",
+        "rs" => "rust",
+        "golang" => "go",
+        "cc" | "cxx" | "hpp" => "cpp",
+        "cs" => "csharp",
+        "rb" => "ruby",
+        other => other,
+    }
 }
 
 impl AstGrepLang {
     /// Convert from the crate's `LangId` string.
     pub fn from_lang_id(lang_id: LangId) -> Option<Self> {
-        match lang_id {
-            "typescript" => Some(Self::TypeScript),
-            "tsx" => Some(Self::Tsx),
-            "javascript" => Some(Self::JavaScript),
-            "python" => Some(Self::Python),
-            "rust" => Some(Self::Rust),
-            "go" => Some(Self::Go),
-            // Markdown, CSS, HTML etc. don't have meaningful AST patterns
-            _ => None,
-        }
+        Self::from_str(lang_id)
     }
 
-    /// Parse from a string (case-insensitive).
+    /// Parse from a string (case-insensitive, supports common aliases).
+    ///
+    /// Returns `None` for markup-only languages (no call_node_kinds) that
+    /// don't have meaningful AST patterns.
     pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "typescript" | "ts" => Some(Self::TypeScript),
-            "tsx" => Some(Self::Tsx),
-            "javascript" | "js" => Some(Self::JavaScript),
-            "python" | "py" => Some(Self::Python),
-            "rust" | "rs" => Some(Self::Rust),
-            "go" | "golang" => Some(Self::Go),
-            _ => None,
-        }
+        let lowered = s.to_lowercase();
+        let canonical = resolve_alias(&lowered);
+        let registry = lang_registry();
+        registry.get(canonical).and_then(|lang| {
+            // Skip markup-only languages with no structural patterns
+            if lang.call_node_kinds().is_empty() {
+                None
+            } else {
+                Some(Self {
+                    lang_id: lang.id(),
+                })
+            }
+        })
     }
 
     /// File extensions associated with this language.
     pub fn extensions(&self) -> &'static [&'static str] {
-        match self {
-            Self::TypeScript => &["ts", "mts", "cts"],
-            Self::Tsx => &["tsx"],
-            Self::JavaScript => &["js", "mjs", "cjs", "jsx"],
-            Self::Python => &["py", "pyi"],
-            Self::Rust => &["rs"],
-            Self::Go => &["go"],
-        }
+        lang_registry()
+            .get(self.lang_id)
+            .map(|l| l.extensions())
+            .unwrap_or(&[])
     }
 
     /// Check if a file extension matches this language.
@@ -72,6 +82,22 @@ impl AstGrepLang {
     pub fn matches_path(&self, path: &std::path::Path) -> bool {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         self.matches_extension(ext)
+    }
+
+    /// All language IDs available for ast-grep (non-markup languages), sorted.
+    pub fn available_languages() -> Vec<&'static str> {
+        let mut langs: Vec<&'static str> = lang_registry()
+            .language_ids()
+            .into_iter()
+            .filter(|id| {
+                lang_registry()
+                    .get(id)
+                    .map(|l| !l.call_node_kinds().is_empty())
+                    .unwrap_or(false)
+            })
+            .collect();
+        langs.sort_unstable();
+        langs
     }
 }
 
@@ -100,11 +126,8 @@ impl Language for AstGrepLang {
     fn pre_process_pattern<'q>(&self, query: &'q str) -> Cow<'q, str> {
         let expando = self.expando_char();
         if expando == '$' {
-            // TS, JS, Go: $ is valid in identifiers, no preprocessing needed
             return Cow::Borrowed(query);
         }
-        // Python, Rust: replace $ with µ in meta-variable positions
-        // Logic from ast-grep's official pre_process_pattern
         let mut ret = Vec::with_capacity(query.len());
         let mut dollar_count = 0;
         for c in query.chars() {
@@ -125,27 +148,17 @@ impl Language for AstGrepLang {
     }
 
     fn expando_char(&self) -> char {
-        match self {
-            // $ is not a valid identifier char in Python, Rust
-            Self::Python | Self::Rust => '\u{00B5}', // µ
-            // $ is valid in TS, JS, Go identifiers
-            _ => '$',
-        }
+        lang_registry()
+            .get(self.lang_id)
+            .map(|l| l.expando_char())
+            .unwrap_or('$')
     }
 }
 
 impl LanguageExt for AstGrepLang {
     fn get_ts_language(&self) -> TSLanguage {
         use crate::parser::grammar_for;
-        let lang_id = match self {
-            Self::TypeScript => "typescript",
-            Self::Tsx => "tsx",
-            Self::JavaScript => "javascript",
-            Self::Python => "python",
-            Self::Rust => "rust",
-            Self::Go => "go",
-        };
-        grammar_for(lang_id).into()
+        grammar_for(self.lang_id).into()
     }
 }
 
@@ -155,25 +168,47 @@ mod tests {
     use ast_grep_core::tree_sitter::LanguageExt;
 
     #[test]
-    fn test_from_str() {
-        assert_eq!(
-            AstGrepLang::from_str("typescript"),
-            Some(AstGrepLang::TypeScript)
-        );
-        assert_eq!(AstGrepLang::from_str("tsx"), Some(AstGrepLang::Tsx));
-        assert_eq!(
-            AstGrepLang::from_str("javascript"),
-            Some(AstGrepLang::JavaScript)
-        );
-        assert_eq!(AstGrepLang::from_str("python"), Some(AstGrepLang::Python));
-        assert_eq!(AstGrepLang::from_str("rust"), Some(AstGrepLang::Rust));
-        assert_eq!(AstGrepLang::from_str("go"), Some(AstGrepLang::Go));
-        assert_eq!(AstGrepLang::from_str("markdown"), None);
+    fn test_from_str_standard() {
+        assert!(AstGrepLang::from_str("typescript").is_some());
+        assert!(AstGrepLang::from_str("tsx").is_some());
+        assert!(AstGrepLang::from_str("javascript").is_some());
+        assert!(AstGrepLang::from_str("python").is_some());
+        assert!(AstGrepLang::from_str("rust").is_some());
+        assert!(AstGrepLang::from_str("go").is_some());
+    }
+
+    #[test]
+    fn test_from_str_new_languages() {
+        assert!(AstGrepLang::from_str("apex").is_some());
+        assert!(AstGrepLang::from_str("java").is_some());
+        assert!(AstGrepLang::from_str("ruby").is_some());
+        assert!(AstGrepLang::from_str("c").is_some());
+        assert!(AstGrepLang::from_str("cpp").is_some());
+        assert!(AstGrepLang::from_str("csharp").is_some());
+        assert!(AstGrepLang::from_str("php").is_some());
+    }
+
+    #[test]
+    fn test_from_str_aliases() {
+        assert!(AstGrepLang::from_str("ts").is_some());
+        assert!(AstGrepLang::from_str("js").is_some());
+        assert!(AstGrepLang::from_str("py").is_some());
+        assert!(AstGrepLang::from_str("rs").is_some());
+        assert!(AstGrepLang::from_str("golang").is_some());
+        assert!(AstGrepLang::from_str("cs").is_some());
+        assert!(AstGrepLang::from_str("rb").is_some());
+    }
+
+    #[test]
+    fn test_from_str_markup_rejected() {
+        assert!(AstGrepLang::from_str("markdown").is_none());
+        assert!(AstGrepLang::from_str("css").is_none());
+        assert!(AstGrepLang::from_str("html").is_none());
     }
 
     #[test]
     fn test_ast_grep_basic() {
-        let lang = AstGrepLang::TypeScript;
+        let lang = AstGrepLang::from_str("typescript").unwrap();
         let grep = lang.ast_grep("const x = 1;");
         let root = grep.root();
         assert!(root.find("const $X = $Y").is_some());
@@ -181,11 +216,10 @@ mod tests {
 
     #[test]
     fn test_python_function_pattern() {
-        let lang = AstGrepLang::Python;
+        let lang = AstGrepLang::from_str("python").unwrap();
         let source = "def add(a, b):\n    return a + b\n";
         let grep = lang.ast_grep(source);
         let root = grep.root();
-        // Pattern with meta-variables — $ gets replaced with µ for parsing
         let found = root.find("def $FUNC($$$):\n    return $X");
         assert!(found.is_some(), "Python function pattern should match");
         let node = found.unwrap();
@@ -194,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_python_expression_pattern() {
-        let lang = AstGrepLang::Python;
+        let lang = AstGrepLang::from_str("python").unwrap();
         let source = "x = self.value + 1\n";
         let grep = lang.ast_grep(source);
         let root = grep.root();
@@ -204,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_rust_function_pattern() {
-        let lang = AstGrepLang::Rust;
+        let lang = AstGrepLang::from_str("rust").unwrap();
         let source = "fn add(a: i32, b: i32) -> i32 { a + b }";
         let grep = lang.ast_grep(source);
         let root = grep.root();
@@ -214,22 +248,46 @@ mod tests {
 
     #[test]
     fn test_expando_char() {
-        assert_eq!(AstGrepLang::Python.expando_char(), '\u{00B5}');
-        assert_eq!(AstGrepLang::Rust.expando_char(), '\u{00B5}');
-        assert_eq!(AstGrepLang::TypeScript.expando_char(), '$');
-        assert_eq!(AstGrepLang::JavaScript.expando_char(), '$');
-        assert_eq!(AstGrepLang::Go.expando_char(), '$');
+        assert_eq!(
+            AstGrepLang::from_str("python").unwrap().expando_char(),
+            '\u{00B5}'
+        );
+        assert_eq!(
+            AstGrepLang::from_str("rust").unwrap().expando_char(),
+            '\u{00B5}'
+        );
+        assert_eq!(
+            AstGrepLang::from_str("typescript").unwrap().expando_char(),
+            '$'
+        );
+        assert_eq!(
+            AstGrepLang::from_str("javascript").unwrap().expando_char(),
+            '$'
+        );
+        assert_eq!(
+            AstGrepLang::from_str("go").unwrap().expando_char(),
+            '$'
+        );
     }
 
     #[test]
     fn test_pre_process_pattern_python() {
-        let lang = AstGrepLang::Python;
+        let lang = AstGrepLang::from_str("python").unwrap();
         let result = lang.pre_process_pattern("def $FUNC($$$):");
-        // $ before uppercase or $$$ should be replaced with µ
         assert!(result.contains('\u{00B5}'), "Should contain µ expando char");
         assert!(
             !result.contains('$'),
             "Should not contain $ after preprocessing"
         );
+    }
+
+    #[test]
+    fn test_available_languages() {
+        let available = AstGrepLang::available_languages();
+        assert!(available.contains(&"typescript"));
+        assert!(available.contains(&"apex"));
+        assert!(available.contains(&"java"));
+        assert!(!available.contains(&"markdown"));
+        assert!(!available.contains(&"css"));
     }
 }

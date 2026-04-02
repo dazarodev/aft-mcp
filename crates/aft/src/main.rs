@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use aft::config::{AftConfig, Config};
 use aft::context::AppContext;
 use aft::lang::LangRegistry;
-use aft::parser::{init_lang_registry, TreeSitterProvider};
+use aft::parser::{init_lang_registry, init_lifecycle_config, TreeSitterProvider};
 use aft::protocol::{RawRequest, Response};
 
 use serde_json::{json, Value};
@@ -94,6 +94,7 @@ fn main() {
         registry.retain(active);
     }
     init_lang_registry(registry);
+    init_lifecycle_config(aft_config.entry_points.lifecycle.clone());
 
     let ctx = AppContext::new(Box::new(TreeSitterProvider::new()), Config::default());
 
@@ -194,7 +195,7 @@ fn handle_tools_list() -> Result<Value, McpError> {
     Ok(json!({
         "tools": [{
             "name": "aft",
-            "description": "Code intelligence: outline (file structure), zoom (symbol + call annotations), callers (who calls this), call_tree (what this calls), impact (what breaks), trace_to (execution path from entry points), trace_data (data flow), ast_search (structural pattern search), read (file content).",
+            "description": "Code intelligence and navigation. Commands: outline, zoom, callers, call_tree, impact, trace_to, trace_data, ast_search, read. LSP: lsp_hover, lsp_find_references, lsp_goto_definition, lsp_diagnostics, lsp_rename.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -216,10 +217,24 @@ fn handle_tools_list() -> Result<Value, McpError> {
                     },
                     "depth": { "type": "number", "description": "Traversal depth (default 5)" },
                     "pattern": { "type": "string", "description": "AST pattern for ast_search" },
-                    "lang": { "type": "string", "description": "Language for ast_search (typescript, javascript, python, rust, go)" },
+                    "lang": { "type": "string", "description": "Language for ast_search (apex, c, cpp, csharp, go, java, javascript, php, python, ruby, rust, tsx, typescript)" },
                     "startLine": { "type": "number", "description": "Start line (1-based) for read" },
                     "endLine": { "type": "number", "description": "End line (1-based) for read" },
-                    "expression": { "type": "string", "description": "Expression for trace_data" }
+                    "limit": { "type": "number", "description": "Max lines to return for read (default: 2000)" },
+                    "expression": { "type": "string", "description": "Expression to track for trace_data (requires file + symbol)" },
+                    "line": { "type": "number", "description": "Cursor line (1-based) for lsp_hover, lsp_find_references, lsp_goto_definition" },
+                    "character": { "type": "number", "description": "Cursor column (0-based) for lsp_hover, lsp_find_references, lsp_goto_definition" },
+                    "include_declaration": { "type": "boolean", "description": "Include declaration in lsp_find_references results (default: true)" },
+                    "paths": {
+                        "type": "array", "items": { "type": "string" },
+                        "description": "Search paths for ast_search (default: project root)"
+                    },
+                    "globs": {
+                        "type": "array", "items": { "type": "string" },
+                        "description": "Include/exclude glob filters for ast_search (prefix ! to exclude)"
+                    },
+                    "context": { "type": "number", "description": "Lines of context around ast_search matches" },
+                    "newName": { "type": "string", "description": "New name for lsp_rename" }
                 },
                 "required": ["command"]
             }

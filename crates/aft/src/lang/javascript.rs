@@ -1,6 +1,6 @@
 use tree_sitter::Language;
 
-use super::{IndentPreference, LangSupport};
+use super::{EntryPointConfig, IndentPreference, LangSupport};
 
 pub struct JavaScriptLang;
 
@@ -40,5 +40,14 @@ impl LangSupport for JavaScriptLang {
 
     fn has_imports(&self) -> bool {
         true
+    }
+
+    fn entry_point_config(&self) -> EntryPointConfig {
+        EntryPointConfig {
+            test_exact_names: &["describe", "it", "test"],
+            test_prefixes: &["test", "spec"],
+            case_sensitive: false,
+            lifecycle_methods: &[],
+        }
     }
 }

@@ -116,14 +116,16 @@ pub fn handle_read(req: &RawRequest, _ctx: &AppContext) -> Response {
 
     let start_line = req
         .params
-        .get("start_line")
+        .get("startLine")
+        .or_else(|| req.params.get("start_line"))
         .and_then(|v| v.as_u64())
         .map(|v| v.max(1) as u32)
         .unwrap_or(1);
 
     let end_line = req
         .params
-        .get("end_line")
+        .get("endLine")
+        .or_else(|| req.params.get("end_line"))
         .and_then(|v| v.as_u64())
         .map(|v| v as u32)
         .unwrap_or_else(|| (start_line + limit - 1).min(total_lines));

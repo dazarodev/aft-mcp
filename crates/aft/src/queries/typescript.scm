@@ -31,6 +31,13 @@
 (type_alias_declaration
   name: (type_identifier) @type_alias.name) @type_alias.def
 
+;; class property declarations (e.g. @track prop = [], @api label)
+(class_declaration
+  name: (type_identifier) @prop.class_name
+  body: (class_body
+    (public_field_definition
+      name: (property_identifier) @prop.name) @prop.def))
+
 ;; top-level const/let variable declarations
 (lexical_declaration
   (variable_declarator

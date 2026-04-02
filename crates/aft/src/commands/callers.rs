@@ -66,7 +66,8 @@ pub fn handle_callers(req: &RawRequest, ctx: &AppContext) -> Response {
     match graph.build_file(file_path) {
         Ok(data) => {
             let has_symbol = data.calls_by_symbol.contains_key(symbol)
-                || data.exported_symbols.contains(&symbol.to_string());
+                || data.exported_symbols.contains(&symbol.to_string())
+                || data.symbol_metadata.contains_key(symbol);
             if !has_symbol {
                 return Response::error(
                     &req.id,

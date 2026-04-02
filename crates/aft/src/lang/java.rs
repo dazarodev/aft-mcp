@@ -1,6 +1,6 @@
 use tree_sitter::Language;
 
-use super::LangSupport;
+use super::{EntryPointConfig, LangSupport};
 
 pub struct JavaLang;
 
@@ -31,5 +31,18 @@ impl LangSupport for JavaLang {
 
     fn has_imports(&self) -> bool {
         true
+    }
+
+    fn entry_point_config(&self) -> EntryPointConfig {
+        EntryPointConfig {
+            test_exact_names: &[],
+            test_prefixes: &["test"],
+            case_sensitive: false,
+            lifecycle_methods: &[],
+        }
+    }
+
+    fn export_modifiers(&self) -> &'static [&'static str] {
+        &["public"]
     }
 }
