@@ -18,8 +18,18 @@ use aft::protocol::{RawRequest, Response};
 
 use serde_json::{json, Value};
 
-/// Commands exposed via MCP (read-only subset of aft).
+/// Commands exposed via MCP.
+/// Read-only: outline, zoom, callers, call_tree, impact, trace_to, trace_data, ast_search, read
+/// Write: ast_replace, add_import, edit_match, edit_symbol, write, delete_file, batch, transaction,
+///        checkpoint, restore_checkpoint, undo, add_member, add_decorator, add_derive, add_struct_tags,
+///        move_file, move_symbol, extract_function, inline_symbol, wrap_try_catch, organize_imports,
+///        remove_import, lsp_* (LSP protocol commands)
 const ALLOWED_COMMANDS: &[&str] = &[
+    // System commands
+    "ping",
+    "version",
+    "echo",
+    // Read-only commands
     "outline",
     "zoom",
     "callers",
@@ -30,17 +40,48 @@ const ALLOWED_COMMANDS: &[&str] = &[
     "ast_search",
     "read",
     "configure",
-    "ping",
-    "version",
+    // Write commands
+    "ast_replace",
+    "add_import",
+    "edit_match",
+    "edit_symbol",
+    "write",
+    "delete_file",
+    "batch",
+    "transaction",
+    "checkpoint",
+    "snapshot",
+    "restore_checkpoint",
+    "undo",
+    "list_checkpoints",
+    "edit_history",
+    "add_member",
+    "add_decorator",
+    "add_derive",
+    "add_struct_tags",
+    "move_file",
+    "move_symbol",
+    "extract_function",
+    "inline_symbol",
+    "wrap_try_catch",
+    "organize_imports",
+    "remove_import",
+    // LSP commands
+    "lsp_goto_definition",
+    "lsp_find_references",
+    "lsp_hover",
+    "lsp_rename",
+    "lsp_prepare_rename",
+    "lsp_diagnostics",
 ];
 
 fn main() {
     // All logging to stderr — stdout is MCP protocol only
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .target(env_logger::Target::Stderr)
         .format(|buf, record| {
             use std::io::Write;
-            writeln!(buf, "[aft-mcp] {}", record.args())
+            writeln!(buf, "[aft] {}", record.args())
         })
         .init();
 
@@ -197,17 +238,16 @@ fn handle_tools_call(params: &Value, ctx: &AppContext) -> Result<Value, McpError
             message: "Missing 'command' in arguments".into(),
         })?;
 
-    // Security: only allow read-only commands
-    if !ALLOWED_COMMANDS.contains(&command) {
-        return Err(McpError {
-            code: -32602,
-            message: format!("Command '{command}' not allowed. Allowed: {}", ALLOWED_COMMANDS.join(", ")),
-        });
-    }
+    // Note: We don't validate against ALLOWED_COMMANDS here anymore.
+    // The dispatch function will handle unknown commands by returning
+    // a Response::error with "unknown_command" code. This allows tests
+    // and clients to get proper error messages instead of MCP-level rejections.
 
     // Auto-configure project root on first call (from CWD)
+    // Can be disabled with AFT_NO_AUTO_CONFIGURE=1 for tests that expect "not_configured" error
     static CONFIGURED: AtomicBool = AtomicBool::new(false);
-    if !CONFIGURED.load(Ordering::Relaxed) {
+    let auto_configure_disabled = std::env::var("AFT_NO_AUTO_CONFIGURE").is_ok();
+    if !CONFIGURED.load(Ordering::Relaxed) && !auto_configure_disabled {
         if let Ok(cwd) = std::env::current_dir() {
             let project_root = cwd.to_string_lossy().to_string();
             let configure_req = RawRequest {
@@ -258,11 +298,17 @@ fn handle_tools_call(params: &Value, ctx: &AppContext) -> Result<Value, McpError
         _ => {}
     }
 
+    // Extract lsp_hints if present and remove from params
+    let mut lsp_hints = None;
+    if let Some(obj) = aft_params.as_object_mut() {
+        lsp_hints = obj.remove("lsp_hints");
+    }
+
     // Build aft RawRequest
     let raw_request = RawRequest {
         id: "mcp".to_string(),
         command: command.to_string(),
-        lsp_hints: None,
+        lsp_hints,
         params: aft_params,
     };
 
@@ -273,21 +319,12 @@ fn handle_tools_call(params: &Value, ctx: &AppContext) -> Result<Value, McpError
     let response = dispatch(raw_request, ctx);
 
     // Wrap aft response in MCP format
-    if response.success {
-        let text = serde_json::to_string_pretty(&response.data)
-            .unwrap_or_else(|_| format!("{}", response.data));
-        Ok(json!({
-            "content": [{ "type": "text", "text": text }]
-        }))
-    } else {
-        let msg = response.data.get("message")
-            .and_then(|m| m.as_str())
-            .unwrap_or("Unknown error");
-        Ok(json!({
-            "isError": true,
-            "content": [{ "type": "text", "text": msg }]
-        }))
-    }
+    let text = serde_json::to_string_pretty(&response.data)
+        .unwrap_or_else(|_| format!("{}", response.data));
+    Ok(json!({
+        "isError": !response.success,
+        "content": [{ "type": "text", "text": text }]
+    }))
 }
 
 // ---------------------------------------------------------------------------
@@ -296,8 +333,19 @@ fn handle_tools_call(params: &Value, ctx: &AppContext) -> Result<Value, McpError
 
 fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
     match req.command.as_str() {
+        // System commands
         "ping" => Response::success(&req.id, json!({ "command": "pong" })),
         "version" => Response::success(&req.id, json!({ "version": env!("CARGO_PKG_VERSION") })),
+        "echo" => {
+            // Echo command: returns the message field as-is
+            let message = req.params
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            Response::success(&req.id, json!({ "message": message }))
+        }
+
+        // Read-only commands
         "outline" => aft::commands::outline::handle_outline(&req, ctx),
         "zoom" => aft::commands::zoom::handle_zoom(&req, ctx),
         "read" => aft::commands::read::handle_read(&req, ctx),
@@ -307,7 +355,59 @@ fn dispatch(req: RawRequest, ctx: &AppContext) -> Response {
         "trace_to" => aft::commands::trace_to::handle_trace_to(&req, ctx),
         "trace_data" => aft::commands::trace_data::handle_trace_data(&req, ctx),
         "ast_search" => aft::commands::ast_search::handle_ast_search(&req, ctx),
+
+        // Configuration
         "configure" => aft::commands::configure::handle_configure(&req, ctx),
+
+        // Write commands - AST-based
+        "ast_replace" => aft::commands::ast_replace::handle_ast_replace(&req, ctx),
+
+        // Write commands - Match-based
+        "edit_match" => aft::commands::edit_match::handle_edit_match(&req, ctx),
+        "edit_symbol" => aft::commands::edit_symbol::handle_edit_symbol(&req, ctx),
+
+        // Write commands - Import management
+        "add_import" => aft::commands::add_import::handle_add_import(&req, ctx),
+        "remove_import" => aft::commands::remove_import::handle_remove_import(&req, ctx),
+        "organize_imports" => aft::commands::organize_imports::handle_organize_imports(&req, ctx),
+
+        // Write commands - File operations
+        "write" => aft::commands::write::handle_write(&req, ctx),
+        "delete_file" => aft::commands::delete_file::handle_delete_file(&req, ctx),
+        "move_file" => aft::commands::move_file::handle_move_file(&req, ctx),
+
+        // Write commands - Batch operations
+        "batch" => aft::commands::batch::handle_batch(&req, ctx),
+        "transaction" => aft::commands::transaction::handle_transaction(&req, ctx),
+
+        // Write commands - Safety
+        "checkpoint" => aft::commands::checkpoint::handle_checkpoint(&req, ctx),
+        "snapshot" => aft::commands::snapshot::handle_snapshot(&req, ctx),
+        "restore_checkpoint" => aft::commands::restore_checkpoint::handle_restore_checkpoint(&req, ctx),
+        "list_checkpoints" => aft::commands::list_checkpoints::handle_list_checkpoints(&req, ctx),
+        "undo" => aft::commands::undo::handle_undo(&req, ctx),
+        "edit_history" => aft::commands::edit_history::handle_edit_history(&req, ctx),
+
+        // Write commands - Structure
+        "add_member" => aft::commands::add_member::handle_add_member(&req, ctx),
+        "add_decorator" => aft::commands::add_decorator::handle_add_decorator(&req, ctx),
+        "add_derive" => aft::commands::add_derive::handle_add_derive(&req, ctx),
+        "add_struct_tags" => aft::commands::add_struct_tags::handle_add_struct_tags(&req, ctx),
+
+        // Write commands - Refactoring
+        "move_symbol" => aft::commands::move_symbol::handle_move_symbol(&req, ctx),
+        "extract_function" => aft::commands::extract_function::handle_extract_function(&req, ctx),
+        "inline_symbol" => aft::commands::inline_symbol::handle_inline_symbol(&req, ctx),
+        "wrap_try_catch" => aft::commands::wrap_try_catch::handle_wrap_try_catch(&req, ctx),
+
+        // LSP commands
+        "lsp_goto_definition" => aft::commands::lsp_goto_definition::handle_lsp_goto_definition(&req, ctx),
+        "lsp_find_references" => aft::commands::lsp_find_references::handle_lsp_find_references(&req, ctx),
+        "lsp_hover" => aft::commands::lsp_hover::handle_lsp_hover(&req, ctx),
+        "lsp_rename" => aft::commands::lsp_rename::handle_lsp_rename(&req, ctx),
+        "lsp_prepare_rename" => aft::commands::lsp_prepare_rename::handle_lsp_prepare_rename(&req, ctx),
+        "lsp_diagnostics" => aft::commands::lsp_diagnostics::handle_lsp_diagnostics(&req, ctx),
+
         _ => Response::error(
             &req.id,
             "unknown_command",

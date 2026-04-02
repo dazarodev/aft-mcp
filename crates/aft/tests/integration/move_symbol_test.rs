@@ -419,7 +419,7 @@ fn move_symbol_checkpoint() {
 #[test]
 fn move_symbol_not_configured() {
     let (_tmp, root) = setup_move_fixture();
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_env(&[("AFT_NO_AUTO_CONFIGURE", "1".as_ref())]);
 
     // Use real files from the temp dir so the file_not_found guard passes,
     // but don't call configure — the not_configured guard fires next.
