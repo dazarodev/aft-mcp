@@ -247,7 +247,9 @@ export class BinaryBridge {
     child.stderr?.on("data", (chunk: Buffer) => {
       const lines = chunk.toString("utf-8").trimEnd().split("\n");
       for (const line of lines) {
-        log(`stderr: ${line}`);
+        // Strip Rust env_logger prefix and re-tag under [aft]
+        const stripped = line.replace(/^\[aft\]\s*/, "");
+        log(`[aft] ${stripped}`);
       }
     });
 

@@ -35,7 +35,7 @@ Add AFT to your OpenCode config:
 ```json
 // ~/.config/opencode/config.json
 {
-  "plugins": ["@cortexkit/aft-opencode@latest"]
+  "plugin": ["@cortexkit/aft-opencode@latest"]
 }
 ```
 
