@@ -47,7 +47,7 @@ fn callgraph_configure_missing_param() {
 /// `call_tree` without prior `configure` returns not_configured error.
 #[test]
 fn callgraph_call_tree_without_configure() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_env(&[("AFT_NO_AUTO_CONFIGURE", "1".as_ref())]);
 
     let resp = aft.send(r#"{"id":"1","command":"call_tree","file":"main.ts","symbol":"main"}"#);
 
@@ -259,7 +259,7 @@ fn callgraph_aliased_import_resolution() {
 /// `callers` without prior `configure` returns not_configured error.
 #[test]
 fn callgraph_callers_without_configure() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_env(&[("AFT_NO_AUTO_CONFIGURE", "1".as_ref())]);
 
     let resp =
         aft.send(r#"{"id":"1","command":"callers","file":"helpers.ts","symbol":"validate"}"#);
@@ -406,7 +406,7 @@ fn callgraph_callers_recursive() {
 /// `trace_to` without prior `configure` returns not_configured error.
 #[test]
 fn callgraph_trace_to_not_configured() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_env(&[("AFT_NO_AUTO_CONFIGURE", "1".as_ref())]);
 
     let resp =
         aft.send(r#"{"id":"1","command":"trace_to","file":"helpers.ts","symbol":"checkFormat"}"#);
@@ -824,7 +824,7 @@ fn callgraph_watcher_remove_caller() {
 /// `impact` without prior `configure` returns not_configured error.
 #[test]
 fn callgraph_impact_not_configured() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_env(&[("AFT_NO_AUTO_CONFIGURE", "1".as_ref())]);
 
     let resp = aft.send(r#"{"id":"1","command":"impact","file":"helpers.ts","symbol":"validate"}"#);
 
@@ -977,7 +977,7 @@ fn callgraph_impact_multi_caller() {
 /// `trace_data` without configure returns not_configured error.
 #[test]
 fn callgraph_trace_data_not_configured() {
-    let mut aft = AftProcess::spawn();
+    let mut aft = AftProcess::spawn_with_env(&[("AFT_NO_AUTO_CONFIGURE", "1".as_ref())]);
 
     let resp = aft.send(
         r#"{"id":"1","command":"trace_data","file":"data_flow.ts","symbol":"transformData","expression":"rawInput"}"#,
