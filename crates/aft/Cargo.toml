@@ -1,6 +1,6 @@
 [package]
 name = "aft-mcp"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "MCP code intelligence server — aft engine with MCP JSON-RPC 2.0 wrapper"
 

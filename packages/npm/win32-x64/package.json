@@ -1,6 +1,6 @@
 {
   "name": "@dazarodev/aft-mcp-win32-x64",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "aft-mcp binary for Windows x64",
   "os": [
     "win32"
@@ -12,9 +12,6 @@
   "files": [
     "bin/"
   ],
-  "bin": {
-    "aft-mcp": "bin/aft-mcp.exe"
-  },
   "engines": {
     "node": ">=18"
   },
