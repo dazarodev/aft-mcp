@@ -1,6 +1,6 @@
 {
   "name": "@dazarodev/aft-mcp-darwin-arm64",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "aft-mcp binary for macOS ARM64 (Apple Silicon)",
   "os": [
     "darwin"
@@ -18,6 +18,21 @@
   "engines": {
     "node": ">=18"
   },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "code-analysis",
+    "code-intelligence",
+    "tree-sitter",
+    "ast",
+    "call-graph",
+    "static-analysis",
+    "code-navigation",
+    "ai-tools"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

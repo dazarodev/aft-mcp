@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 "use strict";
 
-const { execFileSync, execSync } = require("child_process");
+/**
+ * postinstall: ensure the aft-mcp binary is available.
+ * Checks npm platform package first, then downloads from GitHub Releases.
+ */
+
 const {
-  accessSync,
   chmodSync,
-  constants,
   existsSync,
   mkdirSync,
   renameSync,
@@ -21,6 +23,7 @@ const { version } = require("./package.json");
 const REPO = "dazarodev/aft-mcp";
 const isWindows = process.platform === "win32";
 const binName = isWindows ? "aft-mcp.exe" : "aft-mcp";
+const key = `${process.platform}-${process.arch}`;
 
 const PLATFORMS = {
   "darwin-arm64": "@dazarodev/aft-mcp-darwin-arm64",
@@ -38,15 +41,6 @@ const ASSET_MAP = {
   "win32-x64": "aft-mcp-win32-x64.exe",
 };
 
-const key = `${process.platform}-${process.arch}`;
-
-if (!PLATFORMS[key]) {
-  process.stderr.write(
-    `Unsupported platform: ${key}\nSupported: ${Object.keys(PLATFORMS).join(", ")}\n`,
-  );
-  process.exit(1);
-}
-
 function getCacheDir() {
   if (isWindows) {
     const base =
@@ -59,50 +53,17 @@ function getCacheDir() {
   return path.join(base, "aft-mcp", "bin");
 }
 
-// 1. Check cache
-function findCached() {
-  const tag = `v${version}`;
-  const p = path.join(getCacheDir(), tag, binName);
-  return existsSync(p) ? p : null;
-}
-
-// 2. Check npm platform package
 function findPlatformPackage() {
   try {
     const pkg = PLATFORMS[key];
+    if (!pkg) return null;
     const pkgDir = path.dirname(require.resolve(`${pkg}/package.json`));
     const p = path.join(pkgDir, "bin", binName);
-    if (existsSync(p)) return p;
+    return existsSync(p) ? p : null;
   } catch {}
   return null;
 }
 
-// 3. Check PATH
-function findInPath() {
-  try {
-    const cmd = isWindows ? "where aft-mcp" : "which aft-mcp";
-    const result = execSync(cmd, {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-    return result || null;
-  } catch {}
-  return null;
-}
-
-// 4. Check ~/.cargo/bin
-function findCargo() {
-  const p = path.join(homedir(), ".cargo", "bin", binName);
-  return existsSync(p) ? p : null;
-}
-
-// 5. Check ~/.claude/bin
-function findClaudeBin() {
-  const p = path.join(homedir(), ".claude", "bin", binName);
-  return existsSync(p) ? p : null;
-}
-
-// 6. Download from GitHub Releases
 function download(url) {
   return new Promise((resolve, reject) => {
     get(url, (res) => {
@@ -127,17 +88,28 @@ function download(url) {
   });
 }
 
-async function downloadBinary() {
-  const asset = ASSET_MAP[key];
+async function main() {
+  if (!PLATFORMS[key]) {
+    console.error(`aft-mcp: unsupported platform ${key}`);
+    process.exit(0); // don't fail install on unsupported platforms
+  }
+
+  // Already have it from platform package?
+  if (findPlatformPackage()) return;
+
+  // Already cached?
   const tag = `v${version}`;
+  const cacheDir = path.join(getCacheDir(), tag);
+  const binaryPath = path.join(cacheDir, binName);
+  if (existsSync(binaryPath)) return;
+
+  // Download
+  const asset = ASSET_MAP[key];
   const url = `https://github.com/${REPO}/releases/download/${tag}/${asset}`;
   const checksumUrl = `https://github.com/${REPO}/releases/download/${tag}/checksums.sha256`;
 
-  process.stderr.write(`Downloading aft-mcp ${tag} for ${key}...\n`);
-
-  const cacheDir = path.join(getCacheDir(), tag);
+  console.log(`Downloading aft-mcp ${tag} for ${key}...`);
   mkdirSync(cacheDir, { recursive: true });
-  const binaryPath = path.join(cacheDir, binName);
   const tmpPath = `${binaryPath}.tmp`;
 
   try {
@@ -164,66 +136,19 @@ async function downloadBinary() {
     writeFileSync(tmpPath, binaryBuf);
     if (!isWindows) chmodSync(tmpPath, 0o755);
     renameSync(tmpPath, binaryPath);
-    process.stderr.write(`aft-mcp ready.\n`);
-    return binaryPath;
+    console.log("aft-mcp binary ready.");
   } catch (err) {
     if (existsSync(tmpPath)) {
       try {
         unlinkSync(tmpPath);
       } catch {}
     }
-    process.stderr.write(`Download failed: ${err.message}\n`);
-    return null;
-  }
-}
-
-async function main() {
-  let binPath =
-    findCached() ||
-    findPlatformPackage() ||
-    findInPath() ||
-    findCargo() ||
-    findClaudeBin();
-
-  if (!binPath) {
-    binPath = await downloadBinary();
-  }
-
-  if (!binPath) {
-    process.stderr.write(
-      [
-        "Could not find the aft-mcp binary.",
-        "",
-        "Install manually:",
-        "  npm install -g aft-mcp",
-        "  cargo install --git https://github.com/dazarodev/aft-mcp.git",
-        `  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | bash`,
-        "",
-      ].join("\n"),
+    console.error(
+      `aft-mcp: download failed (${err.message}). Install manually.`,
     );
-    process.exit(1);
-  }
-
-  try {
-    accessSync(binPath, constants.X_OK);
-  } catch {
-    process.stderr.write(`Binary not executable: ${binPath}\n`);
-    process.exit(1);
-  }
-
-  try {
-    execFileSync(binPath, process.argv.slice(2), { stdio: "inherit" });
-  } catch (err) {
-    if (err.signal) {
-      process.stderr.write(`aft-mcp crashed with signal ${err.signal}\n`);
-      process.exit(1);
-    }
-    if (err.status != null) {
-      process.exit(err.status);
-    }
-    process.stderr.write(`Failed to run aft-mcp: ${err.message}\n`);
-    process.exit(1);
+    // Don't fail the install
+    process.exit(0);
   }
 }
 
-main();
+main().catch(() => process.exit(0));

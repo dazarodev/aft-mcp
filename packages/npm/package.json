@@ -1,6 +1,6 @@
 {
   "name": "aft-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tree-sitter powered code analysis MCP server for Claude Code",
   "license": "MIT",
   "repository": {
@@ -29,14 +29,18 @@
   "bin": {
     "aft-mcp": "./run.js"
   },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
   "files": [
-    "run.js"
+    "run.js",
+    "install.js"
   ],
   "optionalDependencies": {
-    "@dazarodev/aft-mcp-darwin-arm64": "0.1.2",
-    "@dazarodev/aft-mcp-darwin-x64": "0.1.2",
-    "@dazarodev/aft-mcp-linux-arm64": "0.1.2",
-    "@dazarodev/aft-mcp-linux-x64": "0.1.2",
-    "@dazarodev/aft-mcp-win32-x64": "0.1.2"
+    "@dazarodev/aft-mcp-darwin-arm64": "0.1.3",
+    "@dazarodev/aft-mcp-darwin-x64": "0.1.3",
+    "@dazarodev/aft-mcp-linux-arm64": "0.1.3",
+    "@dazarodev/aft-mcp-linux-x64": "0.1.3",
+    "@dazarodev/aft-mcp-win32-x64": "0.1.3"
   }
 }
