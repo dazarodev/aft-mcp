@@ -174,3 +174,73 @@ jobs:
         with:
           generate_release_notes: true
           files: release-assets/*
+
+  npm-publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: [github-release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Prepare and publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          publish_platform() {
+            local dir=$1
+            local artifact=$2
+            local binary=$3
+
+            mkdir -p "packages/npm/${dir}/bin"
+            cp "artifacts/${artifact}/${binary}" "packages/npm/${dir}/bin/${binary}"
+            chmod +x "packages/npm/${dir}/bin/${binary}"
+            local name
+            name=$(cd "packages/npm/${dir}" && node -p "require('./package.json').name")
+            if npm view "${name}@${VERSION}" version &>/dev/null; then
+              echo "${name}@${VERSION} already published, skipping"
+              return 0
+            fi
+            (cd "packages/npm/${dir}" && npm pkg set "version=${VERSION}" && npm publish --access public)
+          }
+
+          publish_platform darwin-arm64 darwin-arm64 aft-mcp
+          publish_platform darwin-x64 darwin-x64 aft-mcp
+          publish_platform linux-arm64 linux-arm64 aft-mcp
+          publish_platform linux-x64 linux-x64 aft-mcp
+          publish_platform win32-x64 win32-x64 aft-mcp.exe
+
+      - name: Publish root package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+          cp README.md packages/npm/README.md
+          cd packages/npm
+          npm pkg set "version=${VERSION}"
+          for pkg in \
+            "@dazarodev/aft-mcp-darwin-arm64" \
+            "@dazarodev/aft-mcp-darwin-x64" \
+            "@dazarodev/aft-mcp-linux-arm64" \
+            "@dazarodev/aft-mcp-linux-x64" \
+            "@dazarodev/aft-mcp-win32-x64"; do
+            npm pkg set "optionalDependencies.${pkg}=${VERSION}"
+          done
+          if npm view "aft-mcp@${VERSION}" version &>/dev/null; then
+            echo "aft-mcp@${VERSION} already published, skipping"
+          else
+            npm publish --access public
+          fi

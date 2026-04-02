@@ -42,6 +42,10 @@ tmp/
 
 # Downloaded binary (install.sh puts it here)
 /bin/
+
+# npm platform package binaries (CI populates these)
+packages/npm/*/bin/*
+!packages/npm/*/bin/.gitkeep
 .sisyphus/
 .worktrees/
 local-ignore/

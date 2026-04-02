@@ -30,15 +30,21 @@ TypeScript, TSX, JavaScript, Python, Rust, Go, Markdown, CSS, HTML, Apex, Java, 
 
 ## Installation
 
-### One-line install (recommended)
+### npx (recommended)
+
+```bash
+claude mcp add -s user aft-mcp -- npx -y aft-mcp@latest
+```
+
+That's it. Claude Code will download the correct binary for your platform on first run.
+
+### One-line install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dazarodev/aft-mcp/main/scripts/install.sh | bash
 ```
 
-Downloads the binary to `~/.claude/bin/aft-mcp`, verifies it works, and registers it as an MCP server via `claude mcp add`. Restart Claude Code after install.
-
-Requires `curl` and `claude` CLI. Falls back to building from source if no pre-built binary is available (requires [Rust](https://rustup.rs)).
+Downloads the binary to `~/.claude/bin/aft-mcp`, verifies it works, and registers it as an MCP server via `claude mcp add`.
 
 ### From source
 
@@ -86,7 +92,13 @@ Prefer aft tools over raw file reads when exploring unfamiliar code.
 
 ```bash
 claude mcp remove -s user aft-mcp
-rm ~/.claude/bin/aft-mcp
+```
+
+If you installed via the shell script or manually, also remove the binary:
+
+```bash
+rm ~/.claude/bin/aft-mcp      # shell script install
+rm ~/.cargo/bin/aft-mcp       # cargo install
 ```
 
 ## Configuration

@@ -1,0 +1,26 @@
+{
+  "name": "@dazarodev/aft-mcp-linux-arm64",
+  "version": "0.1.2",
+  "description": "aft-mcp binary for Linux ARM64",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "preferUnplugged": true,
+  "files": [
+    "bin/"
+  ],
+  "bin": {
+    "aft-mcp": "bin/aft-mcp"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dazarodev/aft-mcp"
+  }
+}
