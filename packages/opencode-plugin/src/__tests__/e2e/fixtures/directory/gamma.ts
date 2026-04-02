@@ -1,1 +1,0 @@
-export const DIRECTORY_MARKER = "OLD_VALUE";

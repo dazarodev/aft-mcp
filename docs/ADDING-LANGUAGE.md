@@ -41,7 +41,7 @@ cargo build --no-default-features --features lang-web
 # Build with specific languages
 cargo build --no-default-features --features lang-typescript,lang-python
 
-# Available meta-features: lang-all, lang-web, lang-systems
+# Available meta-features: lang-all, lang-web
 ```
 
 No other files need changing. The registry discovers the language automatically.
