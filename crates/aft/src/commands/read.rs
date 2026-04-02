@@ -1,7 +1,6 @@
 //! Handler for the `read` command: fast file/directory reading with line numbers.
 //!
-//! This is the simple "give me file contents" command, designed to replace
-//! opencode's built-in read tool with a faster Rust implementation.
+//! This is the simple "give me file contents" command, a fast Rust implementation.
 //! For symbol-based reading and call-graph annotations, use `zoom` instead.
 
 use std::fs;

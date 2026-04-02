@@ -26,51 +26,38 @@ TypeScript, TSX, JavaScript, Python, Rust, Go, Markdown, CSS, HTML, Apex, Java, 
 
 ## Installation
 
-### Claude Code marketplace (recommended)
+### One-line install (recommended)
 
-Add to `~/.claude/settings.json`:
+```bash
+curl -fsSL https://raw.githubusercontent.com/dazarodev/aft-mcp/main/scripts/install.sh | bash
+```
+
+Downloads the binary to `~/.local/bin/aft-mcp`, verifies it works, and adds it to your Claude Code MCP config. Restart Claude Code after install.
+
+Requires `curl`. Falls back to building from source if no pre-built binary is available (requires [Rust](https://rustup.rs)).
+
+### From source
+
+```bash
+cargo install --git https://github.com/dazarodev/aft-mcp.git
+```
+
+Then add to `~/.claude/.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "aft": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@anthropic/aft-mcp@latest"]
+      "command": "aft-mcp"
     }
   }
 }
 ```
 
-Or install as a plugin:
+### Manual
 
-```json
-{
-  "extraKnownMarketplaces": {
-    "aft-mcp": {
-      "source": { "source": "github", "repo": "dazarodev/aft-mcp" }
-    }
-  }
-}
-```
-
-### Manual (binary)
-
-Download the binary for your platform from [Releases](https://github.com/dazarodev/aft-mcp/releases), then add to `~/.claude/.mcp.json`:
-
-```json
-{
-  "aft": {
-    "command": "/path/to/aft-mcp"
-  }
-}
-```
-
-### Install script
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/dazarodev/aft-mcp/main/scripts/install.sh | bash
-```
+Download a binary from [Releases](https://github.com/dazarodev/aft-mcp/releases), put it somewhere on your PATH, and add the same config above.
 
 ## Usage
 
@@ -91,15 +78,6 @@ languages = ["typescript", "javascript", "python", "rust"]
 
 # Project root override (default: auto-detect)
 # root = "/path/to/project"
-```
-
-## Building from source
-
-```bash
-git clone https://github.com/dazarodev/aft-mcp.git
-cd aft-mcp
-cargo build --release
-# Binary at target/release/aft-mcp
 ```
 
 ## Adding language support

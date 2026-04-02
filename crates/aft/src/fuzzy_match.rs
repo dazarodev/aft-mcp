@@ -1,4 +1,4 @@
-//! Fuzzy string matching for edit_match, inspired by opencode's 4-pass approach.
+//! Fuzzy string matching for edit_match, using a 4-pass approach.
 //!
 //! When exact matching fails, progressively relaxes comparison:
 //!   Pass 1: Exact match (str::find / match_indices)
