@@ -25,9 +25,35 @@ Copy `crates/aft/src/lang/markdown.rs` (simplest) and fill in:
 
 ## Symbol Queries
 
-If you want symbol extraction support (for `outline`, `zoom` commands), create a `.scm` file in `crates/aft/src/queries/` and return it from `symbol_query()` via `include_str!`. See `typescript.scm` for a full example.
+To enable symbol extraction (`outline`, `zoom` commands), create a `.scm` query file in `crates/aft/src/queries/` and return it from `symbol_query()` via `include_str!`.
 
-Languages without a symbol query will fall back to tree-walking for headings/sections.
+The generic extractor maps capture names to symbol kinds by convention:
+
+| Capture prefix                      | SymbolKind |
+| ----------------------------------- | ---------- |
+| `fn`, `arrow`, `trigger`            | Function   |
+| `class`                             | Class      |
+| `method`                            | Method     |
+| `struct`                            | Struct     |
+| `interface`                         | Interface  |
+| `enum`                              | Enum       |
+| `type`, `type_alias`                | TypeAlias  |
+| `var`                               | Variable   |
+| `tag`, `script`, `style`, `heading` | Heading    |
+
+Each capture pair must follow the pattern `@<prefix>.name` (symbol name) and `@<prefix>.def` (definition node). Example:
+
+```scheme
+(class_declaration
+  name: (identifier) @class.name) @class.def
+
+(method_declaration
+  name: (identifier) @method.name) @method.def
+```
+
+No Rust code changes needed — just the `.scm` file and `symbol_query()`. See `apex.scm` for a minimal example. TypeScript/Python/Rust/Go/JS have dedicated extractors for richer output.
+
+Languages without a symbol query fall back to tree-walking for headings/sections.
 
 ## Build Variants
 

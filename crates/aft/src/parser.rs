@@ -167,7 +167,7 @@ impl FileParser {
             "python" => extract_py_symbols(&source, &root, &query),
             "rust" => extract_rs_symbols(&source, &root, &query),
             "go" => extract_go_symbols(&source, &root, &query),
-            _ => extract_md_symbols(&source, &root),
+            _ => extract_generic_symbols(&source, &root, &query, lang),
         }
     }
 }
@@ -219,6 +219,11 @@ pub(crate) fn node_range_with_decorators(node: &Node, source: &str, lang: LangId
             }
             "python" => {
                 // Decorators are handled by decorated_definition capture
+                false
+            }
+            "apex" => {
+                // tree-sitter-sfapex includes annotations inside the declaration
+                // node, so no sibling expansion needed
                 false
             }
             _ => false,
@@ -323,13 +328,48 @@ fn is_exported(node: &Node, export_ranges: &[std::ops::Range<usize>]) -> bool {
         .any(|er| er.start <= r.start && r.end <= er.end)
 }
 
-/// Extract the first line of a node as its signature.
+/// Extract the first meaningful line of a node as its signature.
+/// Skips annotation/decorator lines (`@...`) and multi-line annotation
+/// arguments to find the actual declaration line.
 fn extract_signature(source: &str, node: &Node) -> String {
     let text = node_text(source, node);
-    let first_line = text.lines().next().unwrap_or(text);
-    // Trim trailing opening brace if present
-    let trimmed = first_line.trim_end();
-    let trimmed = trimmed.strip_suffix('{').unwrap_or(trimmed).trim_end();
+    let mut paren_depth: i32 = 0;
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        // Inside multi-line annotation arguments — skip
+        if paren_depth > 0 {
+            for ch in trimmed.chars() {
+                match ch {
+                    '(' => paren_depth += 1,
+                    ')' => paren_depth -= 1,
+                    _ => {}
+                }
+            }
+            continue;
+        }
+        // Annotation line — skip, track parens for multi-line
+        if trimmed.starts_with('@') {
+            for ch in trimmed.chars() {
+                match ch {
+                    '(' => paren_depth += 1,
+                    ')' => paren_depth -= 1,
+                    _ => {}
+                }
+            }
+            continue;
+        }
+        // Declaration line found
+        let sig = trimmed.strip_suffix('{').unwrap_or(trimmed).trim_end();
+        return sig.to_string();
+    }
+
+    // Fallback: first line
+    let first = text.lines().next().unwrap_or(text).trim();
+    let trimmed = first.strip_suffix('{').unwrap_or(first).trim_end();
     trimmed.to_string()
 }
 
@@ -1171,6 +1211,169 @@ fn find_type_identifier_recursive(node: &Node, source: &str) -> Option<String> {
                 break;
             }
         }
+    }
+    None
+}
+
+/// Convention-based generic symbol extractor.
+///
+/// Works with ANY language that provides a `.scm` query file following the naming
+/// convention: `@<kind>.name` for the symbol name node and `@<kind>.def` for the
+/// definition node. Supported kind prefixes:
+///
+/// | Prefix      | SymbolKind   |
+/// |-------------|--------------|
+/// | `fn`        | Function     |
+/// | `class`     | Class        |
+/// | `method`    | Method       |
+/// | `struct`    | Struct       |
+/// | `interface` | Interface    |
+/// | `enum`      | Enum         |
+/// | `type`      | TypeAlias    |
+/// | `var`       | Variable     |
+/// | `trigger`   | Function     |
+/// | `tag`       | Heading      |
+/// | `script`    | Heading      |
+/// | `style`     | Heading      |
+/// | `heading`   | Heading      |
+///
+/// To add a new language: create a `.scm` file with the right capture names,
+/// return it from `symbol_query()`, and it Just Works.
+fn extract_generic_symbols(
+    source: &str,
+    root: &Node,
+    query: &Query,
+    lang: LangId,
+) -> Result<Vec<Symbol>, AftError> {
+    let capture_names = query.capture_names();
+
+    // Build a map: prefix → (name_capture_idx, def_capture_idx, SymbolKind)
+    let mut prefix_map: HashMap<String, (Option<u32>, Option<u32>, SymbolKind)> = HashMap::new();
+
+    for (idx, &cap_name) in capture_names.iter().enumerate() {
+        let (prefix, suffix) = match cap_name.split_once('.') {
+            Some(pair) => pair,
+            None => continue,
+        };
+        let kind = match prefix {
+            "fn" | "arrow" | "trigger" => SymbolKind::Function,
+            "class" => SymbolKind::Class,
+            "method" => SymbolKind::Method,
+            "struct" => SymbolKind::Struct,
+            "interface" => SymbolKind::Interface,
+            "enum" => SymbolKind::Enum,
+            "type" | "type_alias" => SymbolKind::TypeAlias,
+            "var" => SymbolKind::Variable,
+            "tag" | "script" | "style" | "heading" => SymbolKind::Heading,
+            _ => continue,
+        };
+        let entry = prefix_map
+            .entry(prefix.to_string())
+            .or_insert((None, None, kind));
+        match suffix {
+            "name" => entry.0 = Some(idx as u32),
+            "def" => entry.1 = Some(idx as u32),
+            _ => {}
+        }
+    }
+
+    let mut symbols = Vec::new();
+    let mut cursor = QueryCursor::new();
+    let mut matches = cursor.matches(query, *root, source.as_bytes());
+
+    while let Some(m) = {
+        matches.advance();
+        matches.get()
+    } {
+        // Group captures by prefix
+        let mut captures_by_prefix: HashMap<&str, (Option<tree_sitter::Node>, Option<tree_sitter::Node>)> =
+            HashMap::new();
+
+        for cap in m.captures {
+            let Some(&cap_name) = capture_names.get(cap.index as usize) else {
+                continue;
+            };
+            let (prefix, suffix) = match cap_name.split_once('.') {
+                Some(pair) => pair,
+                None => continue,
+            };
+            let entry = captures_by_prefix
+                .entry(prefix)
+                .or_insert((None, None));
+            match suffix {
+                "name" => entry.0 = Some(cap.node),
+                "def" => entry.1 = Some(cap.node),
+                _ => {}
+            }
+        }
+
+        for (prefix, (name_node, def_node)) in &captures_by_prefix {
+            let (Some(name_node), Some(def_node)) = (name_node, def_node) else {
+                continue;
+            };
+            let kind = match prefix_map.get(*prefix) {
+                Some((_, _, k)) => k.clone(),
+                None => continue,
+            };
+            let name = node_text(source, name_node).to_string();
+            let parent = find_generic_parent(def_node, source, lang);
+            let scope_chain: Vec<String> = parent.iter().cloned().collect();
+
+            symbols.push(Symbol {
+                exported: false,
+                name,
+                kind,
+                range: node_range_with_decorators(def_node, source, lang),
+                signature: Some(extract_signature(source, def_node)),
+                scope_chain,
+                parent,
+            });
+        }
+    }
+
+    dedup_symbols(&mut symbols);
+    Ok(symbols)
+}
+
+/// Walk up the AST to find the nearest named parent scope container.
+fn find_generic_parent(node: &Node, source: &str, lang: LangId) -> Option<String> {
+    let containers = lang_registry()
+        .get(lang)
+        .map(|l| l.scope_container_kinds())
+        .unwrap_or(&[]);
+    if containers.is_empty() {
+        return None;
+    }
+    // Walk up to find the nearest scope container ancestor
+    let mut current = node.parent();
+    while let Some(n) = current {
+        let parent = n.parent();
+        if let Some(p) = parent {
+            if containers.contains(&p.kind()) {
+                // Prefer field-based access (most grammars expose "name" field)
+                if let Some(name_node) = p.child_by_field_name("name") {
+                    return Some(node_text(source, &name_node).to_string());
+                }
+                // Fallback: scan direct children for identifier-like nodes
+                let mut child_cursor = p.walk();
+                if child_cursor.goto_first_child() {
+                    loop {
+                        let child = child_cursor.node();
+                        if child.kind() == "identifier"
+                            || child.kind() == "type_identifier"
+                            || child.kind() == "name"
+                            || child.kind() == "constant"
+                        {
+                            return Some(node_text(source, &child).to_string());
+                        }
+                        if !child_cursor.goto_next_sibling() {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        current = parent;
     }
     None
 }
